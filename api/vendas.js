@@ -9,14 +9,9 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Parâmetros 'inicio' e 'fim' são obrigatórios" });
     }
 
-    // === 1. Autenticação ===
-    const authResp = await fetch("https://mercatto.varejofacil.com/api/v1/auth", {
+    // 1. Autenticar
+    const authResp = await fetch(`${process.env.VERCEL_URL}/api/auth`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        username: process.env.VAREJO_USER,
-        password: process.env.VAREJO_PASS,
-      }),
     });
 
     const authRaw = await authResp.text();
@@ -24,22 +19,16 @@ export default async function handler(req, res) {
     try {
       authData = JSON.parse(authRaw);
     } catch {
-      return res.status(500).json({
-        error: "Falha ao parsear resposta do AUTH",
-        raw: authRaw,
-      });
+      return res.status(500).json({ error: "Falha ao parsear resposta do AUTH", raw: authRaw });
     }
 
-    if (!authResp.ok || !authData.token) {
-      return res.status(401).json({
-        error: "Falha na autenticação",
-        raw: authData,
-      });
+    if (!authData.token) {
+      return res.status(401).json({ error: "Token não recebido", raw: authData });
     }
 
     const token = authData.token;
 
-    // === 2. Buscar vendas ===
+    // 2. Buscar vendas
     const vendasResp = await fetch(
       `https://mercatto.varejofacil.com/api/v1/vendas?inicio=${inicio}&fim=${fim}`,
       {
@@ -53,21 +42,22 @@ export default async function handler(req, res) {
     try {
       vendasData = JSON.parse(vendasRaw);
     } catch {
-      return res.status(500).json({
-        error: "Falha ao parsear resposta das vendas",
-        raw: vendasRaw,
-      });
+      return res.status(500).json({ error: "Falha ao parsear vendas", raw: vendasRaw });
     }
 
     if (!vendasResp.ok) {
-      return res.status(vendasResp.status).json({
-        error: "Erro ao buscar vendas",
-        raw: vendasData,
-      });
+      return res.status(vendasResp.status).json({ error: "Erro ao buscar vendas", raw: vendasData });
     }
 
-    return res.status(200).json(vendasData);
+    // 3. Resumir por modalidade
+    const resumo = {};
+    (vendasData || []).forEach(v => {
+      const forma = v.forma_pagamento || "Outros";
+      const valor = Number(v.valor || 0);
+      resumo[forma] = (resumo[forma] || 0) + valor;
+    });
 
+    return res.status(200).json({ resumo, raw: vendasData });
   } catch (err) {
     return res.status(500).json({ error: "Erro interno", details: err.message });
   }
