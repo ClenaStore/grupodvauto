@@ -1,0 +1,1072 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>Resumo de Entradas</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+  <style>
+    :root{
+      /* Tema escuro (padrão) – igual ao index */
+      --bg: #0b1020;
+      --surface: #10172a;
+      --card: #0f172a;
+      --text: #e5e7eb;
+      --muted: #94a3b8;
+      --line: rgba(148,163,184,.25);
+      --brand: #60a5fa;
+      --brand-2: #22d3ee;
+      --ring: rgba(99,102,241,.35);
+      --shadow: 0 20px 60px rgba(2,6,23,.35);
+      --chip-bg:#0b1220;
+      --chip-active:#111827;
+      --chip-text:#cbd5e1;
+      --icon-bg: rgba(255,255,255,.06);
+      --grad: linear-gradient(135deg, var(--brand), var(--brand-2));
+    }
+    /* Tema claro – igual ao index */
+    [data-theme="light"]{
+      --bg: #f6f7fb;
+      --surface: #ffffff;
+      --card: #ffffff;
+      --text: #0f172a;
+      --muted: #475569;
+      --line: #e5e7eb;
+      --chip-bg:#eef2ff;
+      --chip-active:#1f2937;
+      --chip-text:#111827;
+      --icon-bg: rgba(2,6,23,.06);
+      --shadow: 0 16px 36px rgba(15,23,42,.08);
+    }
+
+    *{ box-sizing:border-box }
+    html, body{ height:100% }
+    body{
+      margin:0;
+      font-family: ui-sans-serif, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size:14px;
+      overflow-x:hidden;
+    }
+
+    /* ===== Header unificado (igual index) ===== */
+    header{
+      position: sticky; top:0; z-index: 50;
+      backdrop-filter: saturate(160%) blur(8px);
+      background: color-mix(in srgb, var(--surface) 80%, transparent);
+      border-bottom: 1px solid var(--line);
+    }
+    .head-wrap{
+      max-width: 1200px; margin: 0 auto; padding: 14px 18px;
+      display:flex; align-items:center; gap:12px;
+    }
+    .brand{
+      display:flex; align-items:center; gap:10px; text-decoration:none; color:inherit;
+    }
+    .brand img{ height:42px }
+    .title{
+      font-weight: 800; letter-spacing:.2px;
+      font-size: clamp(18px, 1.6vw, 22px);
+    }
+    .head-spacer{ flex:1 }
+    .icon-btn{
+      border:1px solid var(--line); background: var(--surface);
+      color: var(--text); padding:10px 12px; border-radius: 12px;
+      font-weight:800; cursor:pointer; transition:.2s transform, .2s box-shadow;
+      text-decoration:none; display:inline-flex; align-items:center; gap:8px;
+    }
+    .icon-btn:hover{ transform: translateY(-2px); box-shadow: var(--shadow) }
+    .only-desktop { display: inline-flex; }
+    @media (max-width: 900px) { .only-desktop { display: none !important; } }
+
+    /* User menu */
+    .user{ position: relative; }
+    .user-btn{
+      display:flex; align-items:center; gap:10px; cursor:pointer;
+      border:1px solid var(--line); background: var(--surface);
+      padding:6px 8px; border-radius: 999px;
+    }
+    .user-btn img{
+      width:34px; height:34px; border-radius:50%; object-fit:cover;
+      background: var(--icon-bg);
+    }
+    .user-menu{
+      position:absolute; right:0; top:110%;
+      background: var(--surface); border:1px solid var(--line);
+      border-radius:12px; box-shadow: var(--shadow); min-width:200px;
+      padding:6px; display:none;
+    }
+    .user.open .user-menu{ display:block }
+    .user-menu a, .user-menu button{
+      display:flex; width:100%; background:transparent; color:var(--text);
+      border:none; text-align:left; padding:10px 12px; border-radius:10px; cursor:pointer;
+      text-decoration:none; font-weight:600;
+    }
+    .user-menu a:hover, .user-menu button:hover{ background: var(--icon-bg) }
+
+    /* ===== Conteúdo ===== */
+    .conteudo{
+      width: 100%;
+      padding: 20px 24px 32px;
+      margin: 0 auto;
+      max-width: 1200px; /* padrão para mobile/tablet */
+    }
+    @media (min-width: 1200px){
+      .conteudo{ max-width: 100%; }
+    }
+
+    .filtros{
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+      align-items: end;
+    }
+    .filtros label{ font-weight: 800; font-size: .95em; display:block; margin-bottom: 6px; color: var(--muted); }
+    .filtros input, .filtros select{
+      padding: 10px; border-radius: 8px; border: 1px solid var(--line); width: 100%;
+      font-size: .95em; background: var(--surface); color: var(--text);
+    }
+    .filtros button{
+      padding: 10px 16px; border: 1px solid var(--line); border-radius: 8px;
+      background: var(--surface); color: var(--text);
+      font-weight: 800; cursor: pointer; font-size: .95em; width: 100%;
+    }
+    .filtros button:hover{ box-shadow: var(--shadow); transform: translateY(-1px); }
+
+    /* Botão/label do período */
+    .daterange-wrap{ display:flex; gap:8px; align-items:center; }
+    .date-btn{
+      border:1px solid var(--line); background: var(--surface); color: var(--text);
+      padding:10px 12px; border-radius:10px; font-weight:800; cursor:pointer;
+    }
+    .range-label{ color: var(--muted); font-weight:700 }
+
+    #painel{
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .empresa-box{
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: var(--shadow);
+      font-size: 0.95em;
+      overflow: hidden;
+    }
+    .empresa-box h2{
+      margin: 0 0 10px;
+      font-size: clamp(1.05rem, .7vw + 1rem, 1.25rem);
+      color: var(--text);
+      word-break: break-word; overflow-wrap: anywhere;
+    }
+    .empresa-box ul{ list-style: none; padding-left: 0; margin: 0 }
+    .empresa-box li{ margin-bottom: 6px; color: var(--muted) }
+
+    .grafico-desktop{
+      margin-top: 12px;
+      height: 300px;
+      border: 1px dashed var(--line);
+      border-radius: 10px;
+      cursor: pointer;
+      position: relative;
+    }
+    .grafico-desktop::after{
+      content: "Clique para ver a evolução anual";
+      position: absolute; right: 10px; bottom: 8px;
+      font-size: 12px; color: var(--muted);
+    }
+    .grafico-desktop canvas{
+      width: 100% !important;
+      height: 100% !important;
+      display: block;
+    }
+
+    .legend{
+      display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px;
+      color: var(--muted);
+    }
+    .legend span{
+      display: inline-flex; align-items: center; gap: 6px; font-size: 0.85em; white-space: nowrap;
+    }
+    .legend span::before{
+      content: ''; width: 10px; height: 10px; border-radius: 50%; background-color: currentColor; display: inline-block;
+    }
+
+    /* Modal anual */
+    .modal{
+      position: fixed; inset: 0; z-index: 1000;
+      background: rgba(0,0,0,.6);
+      display: none; align-items: center; justify-content: center;
+      padding: 20px;
+    }
+    .modal.open{ display: flex; }
+    .modal-card{
+      width: min(1100px, 96vw);
+      background: var(--surface); border-radius: 14px; box-shadow: var(--shadow);
+      border:1px solid var(--line);
+      padding: 18px;
+      max-height: 92vh; overflow: auto; color: var(--text);
+    }
+    .modal-header{
+      display:flex; align-items:center; gap:12px; margin-bottom:10px;
+    }
+    .modal-header h3{ margin:0; font-size:1.1rem }
+    .close-x{ margin-left:auto; cursor:pointer; font-weight:bold; font-size:20px; line-height:1; color:var(--muted) }
+    .kpi-row{
+      display:grid; gap:10px; grid-template-columns: repeat(3, minmax(0,1fr));
+      margin:10px 0 14px;
+    }
+    .kpi-badge{
+      border:1px solid var(--line); border-radius:12px; padding:12px; background: color-mix(in srgb, var(--surface) 90%, #fff);
+    }
+    .kpi-badge h4{ margin:0 0 6px; font-size:.9rem; color:var(--muted) }
+    .kpi-badge p{ margin:0; font-size:1.15rem; font-weight:800 }
+    .kpi-badge small{ display:block; color:var(--muted); margin-top:2px }
+    .kpi-bonus { border-left:6px solid #f59e0b; }
+    .kpi-socio { border-left:6px solid #3b82f6; }
+    .kpi-erro  { border-left:6px solid #ef4444; }
+
+    .anual-grid{ display:grid; grid-template-columns: 1fr 280px; gap:12px; align-items:start; }
+    #graficoAnualWrap{ height: 380px; border:1px solid var(--line); border-radius:12px; padding:10px }
+    #graficoAnual{ width:100% !important; height:100% !important; }
+
+    .compare-panel{
+      border:1px solid var(--line); border-radius:12px; padding:10px; background: color-mix(in srgb, var(--surface) 90%, #fff);
+      max-height: 380px; overflow:auto;
+    }
+    .compare-panel h4{ margin:0 0 8px; font-size:.95rem }
+    .compare-actions{ display:flex; gap:6px; margin-bottom:8px; flex-wrap:wrap }
+    .mini-btn{
+      border:1px solid var(--line); background: var(--surface); color:var(--text);
+      padding:6px 10px; border-radius:8px; font-weight:700; cursor:pointer; font-size:.8rem
+    }
+    .mini-btn:hover{ box-shadow: var(--shadow); transform: translateY(-1px); }
+    .checklist{ display:grid; grid-template-columns: 1fr; gap:6px }
+    .check-item{ display:flex; gap:8px; align-items:center; font-size:.92rem }
+
+    @media (max-width: 1200px){
+      .filtros{ grid-template-columns: repeat(4, minmax(0, 1fr)); }
+      #painel{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .grafico-desktop{ height: 280px; }
+    }
+    @media (max-width: 900px){
+      .anual-grid{ grid-template-columns: 1fr; }
+      #graficoAnualWrap{ height: 320px; }
+    }
+    @media (max-width: 768px){
+      .filtros{ grid-template-columns: 1fr; }
+      #painel{ grid-template-columns: 1fr; }
+      .conteudo{ padding: 16px 14px 24px; }
+      .grafico-desktop{ height: 240px; }
+      .kpi-row{ grid-template-columns: 1fr; }
+    }
+
+    /* ===== Popover do calendário + overlay ===== */
+    .popover{
+      position:fixed; background: var(--surface); border:1px solid var(--line);
+      border-radius:14px; box-shadow: var(--shadow); padding:10px; z-index:60;
+      display:none; width:min(94vw,360px); max-height:80vh; overflow:auto; color: var(--text);
+    }
+    .overlay{
+      position:fixed; inset:0; background: transparent; display:none; z-index:55;
+    }
+    .cal .cal-head{ display:flex; align-items:center; justify-content:space-between; padding:6px 8px }
+    .cal .cal-grid{ display:grid; grid-template-columns:repeat(7,1fr); gap:6px; padding:8px }
+    .cal .dow{ font-size:.8rem; color:var(--muted); text-align:center }
+    .cal .day{ height:34px; border-radius:10px; display:flex; align-items:center; justify-content:center; cursor:pointer;
+               border:1px solid transparent; font-weight:700; }
+    .cal .day:hover{ background: color-mix(in srgb, var(--surface) 80%, #f1f5f9) }
+    .cal .day.out{ opacity:.35 }
+    .cal .day.sel{ background: var(--brand); color:#fff }
+    .cal .day.range{ background: color-mix(in srgb, var(--brand) 20%, #dbeafe); color:#111827 }
+    .cal .foot{ display:flex; justify-content:flex-end; gap:8px; padding:8px }
+    .btn{ border:1px solid var(--line); background: var(--surface); color: var(--text); padding:8px 10px; border-radius:10px; font-weight:800; cursor:pointer; }
+    .btn.dark{ background:#111827; color:#fff; border-color:#111827 }
+
+    /* ===== Overlay de carregamento ===== */
+    #loading{
+      position: fixed; inset:0; background: rgba(2,6,23,.60);
+      color:#fff; display:none; align-items:center; justify-content:center; z-index: 2000;
+      text-align:center; padding:16px;
+    }
+    #loading.show{ display:flex; }
+    .spinner{
+      width: 46px; height: 46px; border-radius: 50%;
+      border: 4px solid rgba(255,255,255,.25);
+      border-top-color: #fff; animation: spin 1s linear infinite; margin: 0 auto 10px;
+    }
+    @keyframes spin{ to{ transform: rotate(360deg); } }
+    .loading-text{ font-weight:800; letter-spacing:.2px }
+  </style>
+
+  <!-- Proteção por senha + tema sincronizado com o index + interceptador de fetch -->
+  <script>
+  (function(){
+    const KEY_NAME = 'dv_pwd';
+
+    /* === Tema sincronizado com o index === */
+    const savedTheme = localStorage.getItem('dv_theme');
+    if(savedTheme){ document.documentElement.setAttribute('data-theme', savedTheme); }
+
+    window.__toggleTheme = function(){
+      const cur = document.documentElement.getAttribute('data-theme') || 'light';
+      const next = (cur==='light') ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('dv_theme', next);
+    };
+
+    /* === Senha === */
+    async function ensurePassword(){
+      let pwd = localStorage.getItem(KEY_NAME) || '';
+      while(!pwd){
+        pwd = prompt('Digite a senha de acesso:') || '';
+        if(!pwd) continue;
+        try{
+          const r = await fetch('/api/ping', { headers:{ 'x-api-key': pwd } });
+          if(r.ok){ localStorage.setItem(KEY_NAME, pwd); break; }
+          else { alert('Senha incorreta.'); pwd = ''; }
+        }catch(e){
+          localStorage.setItem(KEY_NAME, pwd);
+          break;
+        }
+      }
+    }
+
+    // intercepta fetch para anexar a senha
+    const _fetch = window.fetch.bind(window);
+    window.fetch = (input, init={})=>{
+      let url = (typeof input === 'string') ? input : (input && input.url) || '';
+      init = init || {};
+      const headers = new Headers(init.headers || ((typeof input !== 'string' && input.headers) || {}));
+      const pwd = localStorage.getItem(KEY_NAME) || '';
+      if(url.startsWith('/api/') && pwd){ headers.set('x-api-key', pwd); }
+      return _fetch(input, Object.assign({}, init, { headers }));
+    };
+
+    if(!localStorage.getItem(KEY_NAME)){ ensurePassword(); }
+    window.__DV_PWD_KEY__ = KEY_NAME;
+  })();
+  </script>
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="head-wrap">
+      <a class="brand" href="index.html" aria-label="Início">
+        <img src="https://github.com/ClenaStore/painel-principal/blob/main/img/GRUPO%20DV%20(1).png?raw=true" alt="Logo">
+        <div class="title">Entradas</div>
+      </a>
+      <div class="head-spacer"></div>
+
+      <a class="icon-btn only-desktop" href="index.relatorios.html" title="Relatório Consolidado">📄 Relatórios</a>
+      <button id="themeToggle" class="icon-btn" type="button" title="Alternar tema">🌓 Tema</button>
+
+      <div class="user" id="userMenu">
+        <button class="user-btn" type="button" title="Perfil">
+          <img src="https://github.com/ClenaStore/grupodv/blob/main/paste/Imagem%20do%20WhatsApp%20de%202025-09-08%20%C3%A0(s)%2011.54.12_884bebc9.jpg?raw=true" alt="Usuário">
+          <strong style="font-size:13px">Leonardo</strong>
+        </button>
+        <div class="user-menu">
+          <a href="perfil.html">👤 Meu Perfil</a>
+          <button onclick="handleLogout()">🚪 Sair</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Conteúdo -->
+  <div class="conteudo">
+    <div class="filtros">
+      <!-- Período com calendário estilo Couvert -->
+      <div style="grid-column: span 2;">
+        <label>Período</label>
+        <div class="daterange-wrap">
+          <button id="btnRange" type="button" class="date-btn">📅 Selecionar</button>
+          <span id="rangeLabel" class="range-label">—</span>
+        </div>
+        <!-- Inputs ocultos para compatibilidade com o filtro -->
+        <input type="hidden" id="dataInicio">
+        <input type="hidden" id="dataFim">
+      </div>
+
+      <div>
+        <label for="empresaFiltro">Empresa</label>
+        <select id="empresaFiltro"><option value="">Todas</option></select>
+      </div>
+
+      <div><button id="btnFiltrar" type="button">Filtrar</button></div>
+      <div><button onclick="exportarPDF()">📄 Exportar PDF</button></div>
+      <div><button id="enviarWhatsapp">📲 Enviar pelo WhatsApp</button></div>
+    </div>
+
+    <div id="painel"></div>
+  </div>
+
+  <!-- Modal Evolução Anual -->
+  <div class="modal" id="modalAnual">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="tituloAnual">Evolução Anual</h3>
+        <span class="close-x" id="fecharModal">&times;</span>
+      </div>
+      <div class="kpi-row">
+        <div class="kpi-badge kpi-bonus">
+          <h4>Bonificação</h4>
+          <p id="kpiBonusAno">R$ 0,00</p>
+          <small id="kpiBonusMes">Mês atual: R$ 0,00</small>
+        </div>
+        <div class="kpi-badge kpi-socio">
+          <h4>Consumo Sócio</h4>
+          <p id="kpiSocioAno">R$ 0,00</p>
+          <small id="kpiSocioMes">Mês atual: R$ 0,00</small>
+        </div>
+        <div class="kpi-badge kpi-erro">
+          <h4>Erro de garçons</h4>
+          <p id="kpiErroAno">R$ 0,00</p>
+          <small id="kpiErroMes">Mês atual: R$ 0,00</small>
+        </div>
+      </div>
+
+      <div class="anual-grid">
+        <div id="graficoAnualWrap">
+          <canvas id="graficoAnual"></canvas>
+        </div>
+
+        <aside class="compare-panel">
+          <h4>Comparar empresas</h4>
+          <div class="compare-actions">
+            <button class="mini-btn" id="btnCompareAll">Marcar todas</button>
+            <button class="mini-btn" id="btnCompareNone">Limpar</button>
+          </div>
+          <div id="compareList" class="checklist"></div>
+        </aside>
+      </div>
+    </div>
+  </div>
+
+  <!-- Popover calendário + overlay -->
+  <div class="overlay" id="overlay"></div>
+  <div class="popover" id="popRange"></div>
+
+  <!-- Overlay de carregamento -->
+  <div id="loading" aria-live="polite">
+    <div>
+      <div class="spinner"></div>
+      <div id="loadingText" class="loading-text">Carregando dados…</div>
+    </div>
+  </div>
+
+  <script>
+  /* === Tema e usuário === */
+  document.getElementById('themeToggle').addEventListener('click', ()=> window.__toggleTheme && window.__toggleTheme());
+  const user = document.getElementById('userMenu');
+  user.querySelector('.user-btn').addEventListener('click', ()=> user.classList.toggle('open'));
+  window.addEventListener('click', (e)=>{ if(!user.contains(e.target)) user.classList.remove('open'); });
+  function handleLogout(){ try{ localStorage.removeItem('dv_pwd'); }catch(e){} location.reload(); }
+  window.handleLogout = handleLogout;
+
+  /* ====== FUNÇÕES DE CALENDÁRIO (estilo Couvert) ====== */
+  const $ = s=>document.querySelector(s);
+  const pad2 = n=> String(n).padStart(2,'0');
+  const toISO = (d)=> `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+  const toBR  = (d)=> `${pad2(d.getDate())}/${pad2(d.getMonth()+1)}/${d.getFullYear()}`;
+  function fmtRangeBR(a,b){ return `${toBR(a)} → ${toBR(b)}`; }
+
+  function placePopover(pop, anchor){
+    pop.style.display = 'block';
+    $("#overlay").style.display = 'block';
+    const r = anchor.getBoundingClientRect();
+    const PAD = 8;
+    const w = Math.min(window.innerWidth * 0.94, 360);
+    const h = Math.min(window.innerHeight * 0.80, 540);
+    pop.style.width = w + 'px';
+    pop.style.maxHeight = h + 'px';
+    let left = r.left;
+    let top  = r.bottom + 6;
+    if (left + w > window.innerWidth - PAD) left = window.innerWidth - w - PAD;
+    if (left < PAD) left = PAD;
+    if (top + pop.offsetHeight > window.innerHeight - PAD) {
+      top = r.top - pop.offsetHeight - 6;
+      if (top < PAD) top = PAD;
+    }
+    pop.style.position = 'fixed';
+    pop.style.left = left + 'px';
+    pop.style.top  = top  + 'px';
+  }
+  function hidePopover(){
+    $("#popRange").style.display = 'none';
+    $("#overlay").style.display = 'none';
+  }
+
+  function buildRangeCalendar(container, initStart, initEnd, onApply, onCancel){
+    container.innerHTML = "";
+    const cal = document.createElement("div"); cal.className="cal";
+
+    // Estado do calendário
+    const state = {
+      cursor: new Date(initStart.getFullYear(), initStart.getMonth(), 1),
+      start: new Date(initStart), end: new Date(initEnd)
+    };
+
+    // Cabeçalho
+    const head = document.createElement("div"); head.className="cal-head";
+    const prev = document.createElement("button"); prev.className="btn"; prev.textContent="‹";
+    const next = document.createElement("button"); next.className="btn"; next.textContent="›";
+    const title = document.createElement("div"); title.style.fontWeight="800";
+    const updTitle=()=> title.textContent = state.cursor.toLocaleString('pt-BR',{month:'long',year:'numeric'});
+    prev.onclick=()=>{ state.cursor = new Date(state.cursor.getFullYear(), state.cursor.getMonth()-1, 1); drawGrid(); updTitle(); placePopover(container, $("#btnRange")); };
+    next.onclick=()=>{ state.cursor = new Date(state.cursor.getFullYear(), state.cursor.getMonth()+1, 1); drawGrid(); updTitle(); placePopover(container, $("#btnRange")); };
+    head.appendChild(prev); head.appendChild(title); head.appendChild(next);
+    cal.appendChild(head);
+
+    // Grid
+    // Grid
+const grid = document.createElement("div"); 
+grid.className="cal-grid";
+"DSTQQSS".split("").forEach(l=>{
+  const d=document.createElement("div"); 
+  d.className="dow"; 
+  d.textContent=l; 
+  grid.append(d);
+});
+cal.append(grid); // <-- ESSENCIAL, adiciona o grid no DOM
+
+function sameYMD(a,b){ 
+  return a&&b&&a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate(); 
+}
+function inSelRange(d){ 
+  return state.start && state.end && d>=state.start && d<=state.end; 
+}
+
+function drawGrid(){
+  grid.querySelectorAll('.day').forEach(n=>n.remove());
+  const y=state.cursor.getFullYear(), m=state.cursor.getMonth();
+  const first=new Date(y,m,1);
+  const startDay=first.getDay(); // domingo = 0
+  const daysInMonth=new Date(y,m+1,0).getDate();
+
+  // Dias anteriores
+  for(let i=0;i<startDay;i++){
+    const prevDate=new Date(y,m,1-(startDay-i));
+    const x=document.createElement("div");
+    x.className="day out";
+    x.textContent=prevDate.getDate();
+    grid.append(x);
+  }
+
+  // Dias do mês atual
+  for(let d=1; d<=daysInMonth; d++){
+    const date=new Date(y,m,d);
+    const el=document.createElement("div"); 
+    el.className="day"; 
+    el.textContent=d;
+    if(sameYMD(date,state.start)||sameYMD(date,state.end)) el.classList.add('sel');
+    else if(inSelRange(date)) el.classList.add('range');
+    el.onclick=()=>{
+      if(!state.start || state.end){ state.start=date; state.end=null; }
+      else { if(date<state.start){ state.end=state.start; state.start=date; } else state.end=date; }
+      drawGrid();
+    };
+    grid.append(el);
+  }
+
+  // Dias do próximo mês
+  const filled=startDay+daysInMonth;
+  const totalCells=Math.ceil(filled/7)*7;
+  for(let i=filled;i<totalCells;i++){
+    const nextDate=new Date(y,m,(i-filled)+1);
+    const x=document.createElement("div");
+    x.className="day out";
+    x.textContent=nextDate.getDate();
+    grid.append(x);
+  }
+}
+
+
+    // Rodapé
+    const foot=document.createElement("div"); foot.className="cal foot";
+    const cancel=document.createElement("button"); cancel.className="btn"; cancel.textContent="Cancelar";
+    const apply=document.createElement("button"); apply.className="btn dark"; apply.textContent="Aplicar";
+    cancel.onclick=onCancel;
+    apply.onclick=()=>{ 
+      if(state.start && !state.end){ state.end = state.start; }
+      if(state.start && state.end) onApply(state.start, state.end); 
+    };
+    foot.appendChild(cancel); foot.appendChild(apply);
+    cal.appendChild(foot);
+
+    container.appendChild(cal);
+    updTitle(); drawGrid();
+  }
+
+  /* ====== OVERLAY DE CARREGAMENTO ====== */
+  function showLoading(txt){ const l=$("#loading"); $("#loadingText").textContent = txt||"Carregando…"; l.classList.add('show'); }
+  function hideLoading(){ $("#loading").classList.remove('show'); }
+
+  /* ====== DADOS E LÓGICA ====== */
+  const url = '/api/resumo_financeiro';
+
+  // Ajustes globais Chart.js (bolinha maior + raio de alcance + touch)
+  const POINT_RADIUS = 6, HOVER_RADIUS = 10, HIT_RADIUS = 28;
+  Chart.defaults.elements.point.radius = POINT_RADIUS;
+  Chart.defaults.elements.point.hoverRadius = HOVER_RADIUS;
+  Chart.defaults.elements.point.hitRadius = HIT_RADIUS;
+  Chart.defaults.interaction.mode = 'nearest';
+  Chart.defaults.interaction.intersect = false;
+  Chart.defaults.events = ['mousemove','mouseout','click','touchstart','touchmove','touchend'];
+
+  // Emojis
+  const emojis = {
+    "DINHEIRO": "💵", "CRÉDITO": "💳", "DÉBITO": "🏦", "PIX": "💲",
+    "ONLINE": "💻", "CREDIÁRIO": "📋", "VOUCHER": "🎫", "BONIFICAÇÃO": "🎁",
+    "CONSUMO INTERNO": "👔", "BOLETO": "📃", "MARKETING": "📣", "CONSUMO SÓCIO": "👔",
+    "CATÁLOGO DELIVERY": "🛒", "IFOOD": "🍱", "DELIVERY MUCH": "🍔",
+    "TRANSFERÊNCIA BANCÁRIA": "🏛️", "ERROS DE GARÇONS": "🧯", "OUTROS": "🗂",
+    "PREJUÍZO": "🧯", "DESPERDÍCIO": "🧯", "DESPERDICIO": "🧯"
+  };
+
+  let dados = [];
+  let graficoAnualRef = null;
+  let empresaFoco = null;
+  let selecionadas = new Set();
+
+  const BRL = n => (Number(n)||0).toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2});
+  const MONTHS = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const normalize = s => (s||'').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().trim();
+  const colorFor = i => `hsl(${(i*55)%360} 70% 50%)`;
+
+  // Inicialização: define período padrão (ontem → ontem), carrega dados e monta UI
+  window.addEventListener('DOMContentLoaded', init);
+  async function init(){
+    showLoading("Carregando dados…");
+
+    // período padrão: ontem → ontem
+    const hoje = new Date();
+    const ontem = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate()-1);
+    setPeriodo(ontem, ontem);
+
+    // Calendar popover
+    const btn = $("#btnRange");
+    const pop = $("#popRange");
+    $("#overlay").onclick = hidePopover;
+    btn.addEventListener('click', ()=>{
+      buildRangeCalendar(pop, getInicio(), getFim(), (start,end)=>{
+        setPeriodo(start, end);
+        hidePopover();
+        aplicarFiltro(); // aplica ao escolher
+      }, hidePopover);
+      placePopover(pop, btn);
+    });
+    document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') hidePopover(); });
+
+    // Carregar dados
+    await carregarDados();
+
+    // Botão filtrar (manual)
+    $("#btnFiltrar").addEventListener('click', aplicarFiltro);
+
+    hideLoading();
+  }
+
+  function setPeriodo(dIni, dFim){
+    // normaliza ordem
+    const s = dIni < dFim ? dIni : dFim;
+    const e = dIni < dFim ? dFim : dIni;
+    $("#dataInicio").value = toISO(s);
+    $("#dataFim").value = toISO(e);
+    $("#rangeLabel").textContent = fmtRangeBR(s, e);
+  }
+  function getInicio(){ 
+    const v = $("#dataInicio").value;
+    const [y,m,d] = v.split('-').map(Number);
+    return new Date(y, m-1, d);
+  }
+  function getFim(){ 
+    const v = $("#dataFim").value;
+    const [y,m,d] = v.split('-').map(Number);
+    return new Date(y, m-1, d);
+  }
+
+  async function carregarDados() {
+    try{
+      const resposta = await fetch(url);
+      dados = await resposta.json();
+      const empresas = [...new Set(dados.map(item => item.Empresa))].sort();
+      const select = document.getElementById("empresaFiltro");
+      select.innerHTML = '<option value="">Todas</option>';
+      empresas.forEach(emp => {
+        const option = document.createElement("option");
+        option.value = emp;
+        option.textContent = emp;
+        select.appendChild(option);
+      });
+      await aplicarFiltro();
+    }catch(e){
+      console.error(e);
+      hideLoading();
+      alert('Não foi possível carregar os dados agora.');
+    }
+  }
+
+  async function aplicarFiltro() {
+    showLoading("Aplicando filtros…");
+    await new Promise(r=>setTimeout(r, 50)); // garante que o overlay apareça
+
+    const inicio = document.getElementById("dataInicio").value;
+    const fim = document.getElementById("dataFim").value;
+    const empresaSelecionada = document.getElementById("empresaFiltro").value;
+    const painel = document.getElementById("painel");
+    painel.innerHTML = "";
+
+    const dadosFiltrados = dados.filter(item => {
+      const dataOk = (!inicio || item.Data >= inicio) && (!fim || item.Data <= fim);
+      const empresaOk = !empresaSelecionada || item.Empresa === empresaSelecionada;
+      return dataOk && empresaOk;
+    });
+
+    const empresas = [...new Set(dadosFiltrados.map(item => item.Empresa))];
+
+    empresas.forEach(emp => {
+      const dadosEmpresa = dadosFiltrados.filter(i => i.Empresa === emp);
+      const agrupado = {};
+      dadosEmpresa.forEach(item => {
+        let cat = normalize(item.Categoria);
+        if (cat === 'PREJUIZO' || cat === 'DESPERDICIO') cat = 'ERROS DE GARCONS';
+        const valor = parseFloat(item.Valor) || 0;
+        agrupado[cat] = (agrupado[cat] || 0) + valor;
+      });
+
+      const total = Object.values(agrupado).reduce((a, b) => a + b, 0);
+      const box = document.createElement("div");
+      box.className = "empresa-box";
+
+      const conteudo = document.createElement("div");
+      conteudo.className = "empresa-conteudo";
+
+      let html = `<h2>${emp.toUpperCase()} — R$ ${BRL(total)}</h2><ul>`;
+      for (const catNorm in agrupado) {
+        const nomeExib = displayName(catNorm);
+        const emoji = emojis[nomeExib] || "📌";
+        const valor = BRL(agrupado[catNorm]);
+        html += `<li>${emoji} ${nomeExib}: R$ ${valor}</li>`;
+      }
+      html += `</ul>`;
+      conteudo.innerHTML = html;
+
+      const canvasContainer = document.createElement("div");
+      canvasContainer.className = "grafico-desktop";
+      const canvas = document.createElement("canvas");
+      canvasContainer.appendChild(canvas);
+
+      const legend = document.createElement("div");
+      legend.className = "legend";
+      Object.keys(agrupado).forEach((catNorm, i) => {
+        const cor = `hsl(${i * 35}, 70%, 60%)`;
+        const item = document.createElement("span");
+        item.style.color = cor;
+        item.innerHTML = displayName(catNorm);
+        legend.appendChild(item);
+      });
+
+      box.appendChild(conteudo);
+      box.appendChild(canvasContainer);
+      box.appendChild(legend);
+      painel.appendChild(box);
+
+      desenharGrafico(canvas, agrupado);
+      canvasContainer.addEventListener('click', () => abrirEvolucaoAnual(emp));
+    });
+
+    if (empresas.length === 0)
+      painel.innerHTML = "<p style='text-align:center; color: var(--muted)'>Nenhum dado encontrado para os filtros selecionados.</p>";
+
+    hideLoading();
+  }
+
+  function displayName(catNorm){
+    if (catNorm === 'PREJUIZO' || catNorm === 'DESPERDICIO') return 'ERROS DE GARÇONS';
+    if (catNorm === 'CONSUMO SOCIO') return 'CONSUMO SÓCIO';
+    if (catNorm === 'CREDITO') return 'CRÉDITO';
+    if (catNorm === 'DEBITO') return 'DÉBITO';
+    return Object.keys(emojis).find(k => normalize(k) === catNorm) || catNorm;
+  }
+
+  function desenharGrafico(canvas, agrupado) {
+    const categorias = Object.keys(agrupado);
+    const valores = Object.values(agrupado);
+    const cores = categorias.map((_, i) => `hsl(${i * 35}, 70%, 60%)`);
+
+    new Chart(canvas.getContext("2d"), {
+      type: 'bar',
+      data: {
+        labels: categorias.map(() => ''),
+        datasets: [{ data: valores, backgroundColor: cores }]
+      },
+      options: {
+        maintainAspectRatio: false,
+        responsive: true,
+        interaction: { mode: 'nearest', axis: 'x', intersect: false },
+        events: ['mousemove','mouseout','click','touchstart','touchmove','touchend'],
+        plugins: { legend: { display: false }, title: { display: true, text: 'Distribuição por Categoria' } },
+        scales: { x: { ticks: { display: false }, grid: { display: false } }, y: { beginAtZero: true } }
+      }
+    });
+  }
+
+  /* ======= Helpers para o comparador ======= */
+  function empresasUnicas(){ return [...new Set(dados.map(d=>d.Empresa))].sort(); }
+  function totaisMensaisPorEmpresa(emp, ano){
+    const arr = Array(12).fill(0);
+    dados.forEach(r=>{
+      if(r.Empresa!==emp) return;
+      if(!String(r.Data).startsWith(String(ano))) return;
+      const v = parseFloat(r.Valor)||0;
+      const m = parseInt(String(r.Data).split('-')[1],10)-1;
+      if(m>=0 && m<12) arr[m]+=v;
+    });
+    return arr;
+  }
+
+  /* ===== Evolução Anual ===== */
+  function abrirEvolucaoAnual(empresa){
+    empresaFoco = empresa;
+    selecionadas = new Set([empresa]);
+
+    const ano = new Date().getFullYear();
+    const mesAtualIdx = new Date().getMonth();
+
+    const recs = dados.filter(r => r.Empresa === empresa && String(r.Data).startsWith(String(ano)));
+    const porMes = Array(12).fill(0);
+    recs.forEach(r=>{
+      const valor = parseFloat(r.Valor) || 0;
+      const m = parseInt(String(r.Data).split('-')[1], 10) - 1;
+      if (m>=0 && m<12) porMes[m] += valor;
+    });
+
+    const isBonus = c => normalize(c) === 'BONIFICACAO';
+    const isSocio = c => normalize(c) === 'CONSUMO SOCIO';
+    const isErro  = c => ['ERROS DE GARCONS','PREJUIZO','DESPERDICIO'].includes(normalize(c));
+
+    let bonusAno=0, socioAno=0, erroAno=0;
+    let bonusMes=0, socioMes=0, erroMes=0;
+
+    recs.forEach(r=>{
+      const v = parseFloat(r.Valor) || 0;
+      const cat = normalize(r.Categoria);
+      const m = parseInt(String(r.Data).split('-')[1], 10) - 1;
+
+      if (isBonus(cat)) { bonusAno += v; if (m===mesAtualIdx) bonusMes += v; }
+      if (isSocio(cat)) { socioAno += v; if (m===mesAtualIdx)  socioMes += v; }
+      if (isErro(cat))  { erroAno  += v; if (m===mesAtualIdx)  erroMes  += v; }
+    });
+
+    document.getElementById('tituloAnual').textContent = `Evolução Anual — ${empresa} (${ano})`;
+    document.getElementById('kpiBonusAno').textContent = `R$ ${BRL(bonusAno)}`;
+    document.getElementById('kpiBonusMes').textContent = `Mês atual (${MONTHS[mesAtualIdx]}): R$ ${BRL(bonusMes)}`;
+    document.getElementById('kpiSocioAno').textContent = `R$ ${BRL(socioAno)}`;
+    document.getElementById('kpiSocioMes').textContent = `Mês atual (${MONTHS[mesAtualIdx]}): R$ ${BRL(socioMes)}`;
+    document.getElementById('kpiErroAno').textContent  = `R$ ${BRL(erroAno)}`;
+    document.getElementById('kpiErroMes').textContent  = `R$ ${BRL(erroMes)}`;
+
+    montarChecklistComparacao(empresa);
+    renderGraficoComparacao(ano);
+
+    document.getElementById('modalAnual').classList.add('open');
+
+    document.getElementById('fecharModal').onclick = fecharModal;
+    document.getElementById('modalAnual').addEventListener('click', (e)=>{ if(e.target.id === 'modalAnual') fecharModal(); }, { once:true });
+  }
+
+  function montarChecklistComparacao(){
+    const list = document.getElementById('compareList');
+    list.innerHTML = '';
+    const todas = empresasUnicas();
+
+    todas.forEach((emp, idx)=>{
+      const id = `cmp_${idx}`;
+      const wrap = document.createElement('label');
+      wrap.className = 'check-item';
+      wrap.innerHTML = `
+        <input type="checkbox" id="${id}" value="${emp}" ${selecionadas.has(emp)?'checked':''}/>
+        <span>${emp}</span>
+      `;
+      wrap.querySelector('input').addEventListener('change', (e)=>{
+        if(e.target.checked) selecionadas.add(emp); else selecionadas.delete(emp);
+        const ano = new Date().getFullYear();
+        renderGraficoComparacao(ano);
+      });
+      list.appendChild(wrap);
+    });
+
+    document.getElementById('btnCompareAll').onclick = ()=>{
+      todas.forEach(emp=>selecionadas.add(emp));
+      montarChecklistComparacao();
+      renderGraficoComparacao(new Date().getFullYear());
+    };
+    document.getElementById('btnCompareNone').onclick = ()=>{
+      selecionadas.clear();
+      selecionadas.add(empresaFoco);
+      montarChecklistComparacao();
+      renderGraficoComparacao(new Date().getFullYear());
+    };
+  }
+
+  function renderGraficoComparacao(ano){
+    const ctx = document.getElementById('graficoAnual').getContext('2d');
+    const marcas = [...selecionadas];
+    if (graficoAnualRef) { graficoAnualRef.destroy(); graficoAnualRef = null; }
+
+    if (marcas.length <= 1){
+      const emp = marcas[0] || empresaFoco;
+      const porMes = totaisMensaisPorEmpresa(emp, ano);
+      graficoAnualRef = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: MONTHS,
+          datasets: [{
+            label: 'Total vendido por mês',
+            data: porMes,
+            backgroundColor: MONTHS.map((_,i)=> i===new Date().getMonth() ? 'rgba(37,99,235,.55)' : 'rgba(37,99,235,.22)'),
+            borderColor: '#2563eb',
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          interaction: { mode: 'nearest', axis: 'x', intersect: false },
+          events: ['mousemove','mouseout','click','touchstart','touchmove','touchend'],
+          plugins: {
+            legend: { display:false },
+            title: { display:true, text:`Total vendido por mês — ${emp}` },
+            tooltip: {
+              position: 'nearest',
+              callbacks:{ label: c => 'R$ ' + (Number(c.parsed.y)||0).toLocaleString('pt-BR',{minimumFractionDigits:2}) }
+            }
+          },
+          scales: { y: { beginAtZero:true } }
+        }
+      });
+    } else {
+      const datasets = marcas.map((emp, i)=>({
+        label: emp,
+        data: totaisMensaisPorEmpresa(emp, ano),
+        borderColor: colorFor(i),
+        backgroundColor: colorFor(i),
+        fill: false,
+        tension: .25,
+        pointRadius: POINT_RADIUS,
+        pointHoverRadius: HOVER_RADIUS,
+        pointHitRadius: HIT_RADIUS
+      }));
+      graficoAnualRef = new Chart(ctx, {
+        type: 'line',
+        data: { labels: MONTHS, datasets },
+        options: {
+          responsive:true, maintainAspectRatio:false,
+          interaction: { mode: 'nearest', axis: 'x', intersect: false },
+          elements: { point: { radius: POINT_RADIUS, hoverRadius: HOVER_RADIUS, hitRadius: HIT_RADIUS } },
+          events: ['mousemove','mouseout','click','touchstart','touchmove','touchend'],
+          plugins:{
+            legend:{ display:true },
+            title:{ display:true, text:`Evolução comparada por mês — ${ano}` },
+            tooltip:{
+              position: 'nearest',
+              callbacks:{ label: c => `${c.dataset.label}: R$ ${(Number(c.parsed.y)||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}` }
+            }
+          },
+          scales:{ y:{ beginAtZero:true } }
+        }
+      });
+    }
+  }
+
+  function fecharModal(){
+    document.getElementById('modalAnual').classList.remove('open');
+    if (graficoAnualRef){ graficoAnualRef.destroy(); graficoAnualRef = null; }
+    selecionadas.clear();
+    document.getElementById('compareList').innerHTML = '';
+    empresaFoco = null;
+  }
+
+  /* ===== Exportar PDF ===== */
+  function exportarPDF() {
+    const boxes = document.querySelectorAll(".empresa-box");
+    if (!boxes.length) return alert("Nada para exportar.");
+
+    boxes.forEach((box, index) => {
+      const wrapper = document.createElement("div");
+      wrapper.style.width = Math.min(window.innerWidth, 1200) + "px";
+      wrapper.style.padding = "40px";
+      wrapper.style.background = "#fff";
+      wrapper.style.boxSizing = "border-box";
+      wrapper.style.fontFamily = 'Arial, sans-serif';
+
+      const logo = document.createElement("img");
+      logo.src = "https://static.wixstatic.com/media/d830b0_8cec50a98bbf4775814dbfa5386585e8~mv2.png";
+      logo.style.height = "40px";
+      logo.style.display = "block";
+      logo.style.margin = "0 auto 10px";
+      wrapper.appendChild(logo);
+
+      const titulo = document.createElement("h1");
+      titulo.innerText = "Resumo de Entradas";
+      titulo.style.textAlign = "center";
+      titulo.style.fontSize = "20px";
+      titulo.style.marginBottom = "20px";
+      wrapper.appendChild(titulo);
+
+      const clone = box.cloneNode(true);
+      clone.style.pageBreakAfter = "always";
+      wrapper.appendChild(clone);
+
+      const opt = {
+        margin: 0,
+        filename: `relatorio-entradas-${index + 1}.pdf`,
+        image: { type: 'jpeg', quality: 1 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'px', format: [Math.min(window.innerWidth, 1200), 800], orientation: 'landscape' }
+      };
+
+      html2pdf().from(wrapper).set(opt).save();
+    });
+  }
+  window.exportarPDF = exportarPDF;
+
+  /* ===== WhatsApp ===== */
+  document.getElementById("enviarWhatsapp").addEventListener("click", () => {
+    const dataInicio = document.getElementById("dataInicio").value;
+    const dataFim = document.getElementById("dataFim").value;
+    const boxes = document.querySelectorAll(".empresa-box");
+    if (!boxes.length) return alert("Nenhum resumo encontrado para enviar.");
+
+    function formatarDataBR(iso) {
+      if (!iso) return "";
+      const [y, m, d] = iso.split("-");
+      return `${d}/${m}/${y}`;
+    }
+
+    const dataBR = (dataInicio === dataFim)
+      ? formatarDataBR(dataInicio)
+      : `${formatarDataBR(dataInicio)} a ${formatarDataBR(dataFim)}`;
+
+    let mensagem = `📈 *Fechamento Diário - Financeiro* — ${dataBR}\n\n`;
+    boxes.forEach(box => {
+      const titulo = box.querySelector("h2")?.innerText;
+      const itens = [...box.querySelectorAll("li")].map(li => li.innerText).join("\n");
+      mensagem += `*${titulo}*\n${itens}\n\n`;
+    });
+    const numero = "5577999761436";
+    const link = `https://wa.me/${numero}?text=` + encodeURIComponent(mensagem.trim());
+    window.open(link, "_blank");
+  });
+  </script>
+</body>
+</html>
