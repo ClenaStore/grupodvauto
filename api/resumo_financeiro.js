@@ -1,64 +1,49 @@
-// pages/api/resumo_financeiro.js
 export default async function handler(req, res) {
-  const authUrl   = "https://mercatto.varejofacil.com/api/v1/auth";
-  const dataUrl   = "https://mercatto.varejofacil.com/api/v1/financeiro/resumo"; 
-  // ajuste este endpoint conforme a doc da API 👆
-
-  const clientId  = process.env.VAREJO_FACIL_CLIENT_ID || "";
-  const clientSec = process.env.VAREJO_FACIL_CLIENT_SECRET || "";
-  const apiKey    = process.env.VAREJO_FACIL_API_KEY || "";
-
-  // === 1. Autenticar ===
-  let token = null;
-  let authResp = null;
-
-  // 3 formatos possíveis (igual ao teste_auth)
-  const payloads = [
-    { chave: apiKey },
-    { api_key: apiKey },
-    { client_id: clientId, client_secret: clientSec }
-  ];
-
-  for (let i = 0; i < payloads.length; i++) {
-    try {
-      const r = await fetch(authUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payloads[i])
-      });
-
-      const raw = await r.text();
-      try { authResp = JSON.parse(raw); } catch(e) { authResp = raw; }
-
-      if (r.ok && authResp.access_token) {
-        token = authResp.access_token;
-        break;
-      }
-    } catch (err) {
-      console.error("Erro auth tentativa", i+1, err.message);
-    }
-  }
-
-  if (!token) {
-    return res.status(401).json({ erro: "Falha ao autenticar no Varejo Fácil", authResp });
-  }
-
-  // === 2. Buscar dados de resumo financeiro ===
   try {
-    const r = await fetch(dataUrl, {
-      headers: { Authorization: `Bearer ${token}` }
+    const chave = process.env.VAREJO_FACIL_API_KEY;
+
+    // 1. Autenticação
+    const authResponse = await fetch("https://mercatto.varejofacil.com/api/auth", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chave })
     });
 
-    const raw = await r.text();
-    let json = null;
-    try { json = JSON.parse(raw); } catch(e) {}
+    const authData = await authResponse.json();
 
-    return res.status(r.status).json({
-      status: r.status,
-      dados: json || raw
+    if (!authResponse.ok) {
+      return res.status(authResponse.status).json({ error: "Falha na autenticação", authData });
+    }
+
+    const token = authData.access_token;
+
+    // 2. Buscar cupons fiscais (resumo de vendas)
+    const vendasResponse = await fetch("https://mercatto.varejofacil.com/api/v1/venda/cupons-fiscais", {
+      method: "GET",
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json"
+      }
     });
 
-  } catch (err) {
-    return res.status(500).json({ erro: "Falha ao buscar resumo financeiro", detalhe: err.message });
+    const vendas = await vendasResponse.json();
+
+    if (!vendasResponse.ok) {
+      return res.status(vendasResponse.status).json({ error: "Falha ao carregar vendas", vendas });
+    }
+
+    // 3. Resumir por forma de pagamento
+    const resumo = {};
+    vendas.forEach(venda => {
+      const forma = venda.formaPagamento || "DESCONHECIDA";
+      const valor = venda.valorTotal || 0;
+
+      resumo[forma] = (resumo[forma] || 0) + valor;
+    });
+
+    res.status(200).json({ totalVendas: resumo, vendas });
+
+  } catch (error) {
+    res.status(500).json({ error: "Erro ao buscar resumo financeiro", details: error.message });
   }
 }
