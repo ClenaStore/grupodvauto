@@ -2,7 +2,7 @@ export default async function handler(req, res) {
   try {
     const { inicio, fim } = req.query;
 
-    // 1. Tenta autenticar
+    // === LOGIN AUTH ===
     const authResp = await fetch("https://mercatto.varejofacil.com/api/v1/auth", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -12,26 +12,27 @@ export default async function handler(req, res) {
       }),
     });
 
-    const rawAuth = await authResp.text(); // pega texto cru da resposta
+    const rawAuth = await authResp.text(); // pega o texto bruto
+    console.log("AUTH RAW:", rawAuth); // log em console
 
     let authData;
     try {
-      authData = JSON.parse(rawAuth); // tenta converter em JSON
+      authData = JSON.parse(rawAuth);
     } catch (e) {
       return res.status(500).json({
         error: "Falha ao parsear resposta do AUTH",
-        raw: rawAuth, // mostra conteúdo bruto
+        raw: rawAuth, // devolve o que veio de fato
       });
     }
 
     if (!authResp.ok || !authData.accessToken) {
       return res.status(401).json({
         error: "Falha ao autenticar",
-        raw: authData,
+        raw: rawAuth,
       });
     }
 
-    // 2. Busca vendas
+    // === BUSCA VENDAS ===
     const vendasResp = await fetch(
       `https://mercatto.varejofacil.com/api/v1/financeiro/recebimentos-pdv?inicio=${inicio}&fim=${fim}`,
       {
@@ -43,6 +44,7 @@ export default async function handler(req, res) {
     );
 
     const rawVendas = await vendasResp.text();
+    console.log("VENDAS RAW:", rawVendas);
 
     let vendasData;
     try {
@@ -54,14 +56,7 @@ export default async function handler(req, res) {
       });
     }
 
-    if (!vendasResp.ok) {
-      return res.status(vendasResp.status).json({
-        error: "Erro ao buscar vendas",
-        raw: vendasData,
-      });
-    }
-
-    // 3. Consolida vendas por forma de pagamento
+    // === CONSOLIDA POR FORMA DE PAGAMENTO ===
     const resumo = {};
     if (Array.isArray(vendasData)) {
       vendasData.forEach(v => {
