@@ -1,9 +1,7 @@
-// /pages/api/vendas.js
+// /api/vendas.js
 export default async function handler(req, res) {
   try {
-    const { inicio, fim } = req.query;
-
-    // 1. Autenticar
+    // --- Autenticação ---
     const authResp = await fetch("https://mercatto.varejofacil.com/api/v1/auth", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -13,43 +11,47 @@ export default async function handler(req, res) {
       })
     });
 
-    const authText = await authResp.text();
-    let authData;
-    try {
-      authData = JSON.parse(authText);
-    } catch (e) {
-      return res.status(500).json({ error: "Falha ao parsear resposta do AUTH", raw: authText });
+    if (!authResp.ok) {
+      throw new Error("Falha na autenticação");
     }
 
-    if (!authResp.ok || !authData.accessToken) {
-      return res.status(401).json({ error: "Falha ao autenticar", raw: authData });
+    const authData = await authResp.json();
+    const token = authData?.id || authData?.accessToken;
+
+    if (!token) {
+      throw new Error("Token não recebido");
     }
 
-    const token = authData.accessToken;
+    // --- Monta URL de recebimentos ---
+    let url = "https://mercatto.varejofacil.com/api/v1/financeiro/recebimentos-pdv";
+    const params = new URLSearchParams();
+    if (req.query.start) params.append("start", req.query.start);
+    if (req.query.count) params.append("count", req.query.count);
+    if ([...params].length > 0) url += "?" + params.toString();
 
-    // 2. Buscar recebimentos
-    const vendasResp = await fetch(
-      `https://mercatto.varejofacil.com/api/v1/financeiro/recebimentos-pdv?inicio=${inicio}&fim=${fim}`,
-      {
-        method: "GET",
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json"
-        }
-      }
-    );
+    // --- Chamada de recebimentos ---
+    const recResp = await fetch(url, {
+      headers: { "Authorization": `Bearer ${token}` }
+    });
 
-    const raw = await vendasResp.text(); // pega o texto cru
-    let vendasData;
-    try {
-      vendasData = JSON.parse(raw);
-    } catch (e) {
-      return res.status(vendasResp.status).json({ error: "Resposta inválida", raw });
+    if (!recResp.ok) {
+      throw new Error("Erro ao buscar vendas");
     }
 
-    res.status(200).json(vendasData);
+    const dados = await recResp.json();
+
+    // --- Consolida por forma de pagamento ---
+    const resumo = {};
+    dados.items?.forEach(item => {
+      const forma = item.descricao || "OUTROS";
+      const valor = item.lojas?.reduce((s, l) => s + (l.valorRecebimento || 0), 0) || 0;
+      resumo[forma] = (resumo[forma] || 0) + valor;
+    });
+
+    res.status(200).json({ resumo, bruto: dados });
 
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: err.message });
   }
 }
