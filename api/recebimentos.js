@@ -1,10 +1,8 @@
-// /api/teste_recebimentos.js
+// /pages/api/recebimentos.js
 export default async function handler(req, res) {
   try {
-    const { inicio, fim } = req.query;
-
-    // 1. Autenticar
-    const authResp = await fetch("https://mercatto.varejofacil.com/api/auth", {
+    // 1. Autenticar para obter o token
+    const authResp = await fetch("https://mercatto.varejofacil.com/api/v1/auth", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -13,34 +11,31 @@ export default async function handler(req, res) {
       })
     });
 
+    if (!authResp.ok) {
+      throw new Error("Falha ao autenticar");
+    }
+
     const authData = await authResp.json();
     const token = authData.accessToken;
 
-    if (!token) {
-      return res.status(401).json({ error: "Falha na autenticação" });
-    }
-
     // 2. Monta a URL com filtros opcionais
+    const { inicio, fim } = req.query;
     let url = "https://mercatto.varejofacil.com/api/v1/financeiro/recebimentos-pdv";
+
     const params = new URLSearchParams();
     if (inicio) params.append("dataInicio", inicio);
     if (fim) params.append("dataFim", fim);
     if ([...params].length > 0) url += "?" + params.toString();
 
-    // 3. Buscar os recebimentos
+    // 3. Consulta o endpoint protegido
     const recResp = await fetch(url, {
-      headers: { "Authorization": `Bearer ${token}` }
+      headers: { Authorization: `Bearer ${token}` }
     });
 
-    const raw = await recResp.text(); // pega sempre o texto cru
-    let data;
-    try {
-      data = JSON.parse(raw); // tenta converter em JSON
-    } catch {
-      data = { raw }; // se não for JSON válido, mostra como texto
-    }
+    const dados = await recResp.json();
 
-    res.status(recResp.status).json(data);
+    // 4. Retorna JSON direto
+    res.status(recResp.status).json(dados);
 
   } catch (err) {
     res.status(500).json({ error: err.message });
