@@ -18,21 +18,27 @@ export default async function handler(req, res) {
 
     const token = loginData.accessToken;
 
-    // 2. Prepara URL
+    // 2. Prepara a query FIQL correta
     const { inicio, fim } = req.query;
     const url = new URL("https://mercatto.varejofacil.com/api/v1/financeiro/recebimentos-pdv");
 
     if (inicio && fim) {
+      // FIQL -> campo=ge=YYYY-MM-DD;campo=le=YYYY-MM-DD
       url.searchParams.append("q", `dataRecebimento=ge=${inicio};dataRecebimento=le=${fim}`);
     }
-    url.searchParams.append("count", "500");
+    url.searchParams.append("count", "200");
 
-    // 3. Busca recebimentos
+    // 3. Faz a chamada
     const resp = await fetch(url.toString(), {
-      headers: { "Authorization": `Bearer ${token}` }
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Accept": "application/json"
+      }
     });
 
     const text = await resp.text();
+
+    // debug: se não for JSON, retorna o texto puro
     let data;
     try {
       data = JSON.parse(text);
@@ -41,7 +47,7 @@ export default async function handler(req, res) {
     }
 
     if (!data.items) {
-      return res.status(200).json({ total: 0, formas: {} });
+      return res.status(200).json({ total: 0, formas: {}, raw: data });
     }
 
     // 4. Consolida por forma de pagamento
@@ -60,7 +66,7 @@ export default async function handler(req, res) {
       }
     });
 
-    // 5. Retorna consolidado
+    // 5. Retorno consolidado
     res.status(200).json({
       inicio, fim,
       total,
