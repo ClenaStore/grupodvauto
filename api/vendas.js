@@ -1,7 +1,10 @@
+// /pages/api/vendas.js
 export default async function handler(req, res) {
   try {
-    // 1. Autenticação
-    const login = await fetch("https://mercatto.varejofacil.com/api/auth", {
+    const { inicio, fim } = req.query;
+
+    // 1. Primeiro autentica (gera token)
+    const authResp = await fetch("https://mercatto.varejofacil.com/api/v1/auth", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -10,39 +13,36 @@ export default async function handler(req, res) {
       })
     });
 
-    const loginData = await login.json();
-    if (!login.ok || !loginData.accessToken) {
-      return res.status(401).json({ error: "Falha ao autenticar", detalhe: loginData });
+    const authData = await authResp.json();
+    if (!authResp.ok || !authData.accessToken) {
+      return res.status(401).json({ error: "Falha ao autenticar", raw: authData });
     }
 
-    const token = loginData.accessToken;
+    const token = authData.accessToken;
 
-    // 2. Monta a URL
-    const { inicio, fim } = req.query;
-    let url = "https://mercatto.varejofacil.com/api/v1/financeiro/recebimentos-pdv";
-
-    if (inicio && fim) {
-      url += `?q=dataRecebimento=ge=${inicio};dataRecebimento=le=${fim}&count=200`;
-    }
-
-    // 3. Chamada da API
-    const resp = await fetch(url, {
-      headers: {
-        "Authorization": `Bearer ${token}`,
-        "Accept": "application/json"
+    // 2. Busca os recebimentos consolidados
+    const vendasResp = await fetch(
+      `https://mercatto.varejofacil.com/api/v1/financeiro/recebimentos-pdv?inicio=${inicio}&fim=${fim}`,
+      {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        }
       }
-    });
+    );
 
-    const text = await resp.text();
+    const vendasData = await vendasResp.json();
 
-    let data;
-    try {
-      data = JSON.parse(text);
-    } catch {
-      return res.status(500).json({ error: "Resposta inválida", raw: text });
+    if (!vendasResp.ok) {
+      return res.status(vendasResp.status).json({
+        error: "Erro ao buscar vendas",
+        raw: vendasData
+      });
     }
 
-    return res.status(200).json(data);
+    // 3. Retorna o JSON direto para o navegador
+    res.status(200).json(vendasData);
 
   } catch (err) {
     res.status(500).json({ error: err.message });
