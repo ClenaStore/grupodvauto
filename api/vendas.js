@@ -12,15 +12,19 @@ export default async function handler(req, res) {
       }),
     });
 
+    const rawAuth = await authResp.text();
     let authData;
+
     try {
-      authData = await authResp.json();
+      authData = JSON.parse(rawAuth);
     } catch (e) {
-      return res.status(401).json({ error: "Falha ao parsear AUTH", raw: "" });
+      return res
+        .status(401)
+        .json({ error: "Falha ao parsear AUTH", raw: rawAuth });
     }
 
     if (!authData.accessToken) {
-      return res.status(401).json({ error: "Não autorizado", raw: authData });
+      return res.status(401).json({ error: "AUTH sem accessToken", raw: authData });
     }
 
     const token = authData.accessToken;
@@ -33,7 +37,15 @@ export default async function handler(req, res) {
       }
     );
 
-    const vendasData = await vendasResp.json();
+    const rawVendas = await vendasResp.text();
+    let vendasData;
+    try {
+      vendasData = JSON.parse(rawVendas);
+    } catch (e) {
+      return res
+        .status(500)
+        .json({ error: "Falha ao parsear vendas", raw: rawVendas });
+    }
 
     if (!vendasResp.ok) {
       return res
