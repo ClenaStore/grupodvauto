@@ -5,12 +5,11 @@ export default async function handler(req, res) {
 
   try {
     const { inicio, fim } = req.query;
-
     if (!inicio || !fim) {
       return res.status(400).json({ error: "Parâmetros 'inicio' e 'fim' são obrigatórios" });
     }
 
-    // === 1. Autenticação (pega token com usuário e senha salvos em variáveis de ambiente) ===
+    // === 1. Autenticação ===
     const authResp = await fetch("https://mercatto.varejofacil.com/api/v1/auth", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -20,11 +19,20 @@ export default async function handler(req, res) {
       }),
     });
 
-    const authData = await authResp.json();
+    const authRaw = await authResp.text();
+    let authData;
+    try {
+      authData = JSON.parse(authRaw);
+    } catch {
+      return res.status(500).json({
+        error: "Falha ao parsear resposta do AUTH",
+        raw: authRaw,
+      });
+    }
 
     if (!authResp.ok || !authData.token) {
       return res.status(401).json({
-        error: "Falha ao autenticar no Varejo Fácil",
+        error: "Falha na autenticação",
         raw: authData,
       });
     }
@@ -40,7 +48,16 @@ export default async function handler(req, res) {
       }
     );
 
-    const vendasData = await vendasResp.json();
+    const vendasRaw = await vendasResp.text();
+    let vendasData;
+    try {
+      vendasData = JSON.parse(vendasRaw);
+    } catch {
+      return res.status(500).json({
+        error: "Falha ao parsear resposta das vendas",
+        raw: vendasRaw,
+      });
+    }
 
     if (!vendasResp.ok) {
       return res.status(vendasResp.status).json({
