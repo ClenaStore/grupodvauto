@@ -1,40 +1,38 @@
 // /api/vendas.js
-import getToken from "./auth";
-
 export default async function handler(req, res) {
-  const { inicio, fim } = req.query;
-
   try {
-    // 1. pegar token
-    const tokenData = await getToken();
-    if (!tokenData?.accessToken) {
-      return res.status(401).json({ error: "Falha no login" });
-    }
+    const { inicio, fim } = req.query;
 
-    // 2. chamar o endpoint correto
-    const resp = await fetch("https://mercatto.varejofacil.com/resumoDeVendas/geraTotalizadores", {
+    const params = new URLSearchParams();
+    params.append("filtro.tipoDeData", "DATA_MOVIMENTO");
+    params.append("filtro.periodo.inicio", inicio.split("-").reverse().join("/")); // converte YYYY-MM-DD → DD/MM/YYYY
+    params.append("filtro.periodo.termino", fim.split("-").reverse().join("/"));
+    params.append("filtro.formato", "FORMA_DE_PAGAMENTO");
+    params.append("filtro.tipoQuebra", "LOJA");
+
+    const authResp = await fetch(`${process.env.VAREJO_FACIL_BASE}/api/auth`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${tokenData.accessToken}`,
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        dataInicio: inicio,
-        dataFim: fim,
-        // aqui talvez precise passar também "empresaId" ou "lojaId"
-        // vamos confirmar no Payload do DevTools
+        username: process.env.VAREJO_FACIL_USER,
+        password: process.env.VAREJO_FACIL_PASS,
       }),
     });
 
-    const raw = await resp.text();
-    let data;
-    try {
-      data = JSON.parse(raw);
-    } catch (e) {
-      data = { raw };
-    }
+    const { accessToken } = await authResp.json();
 
-    res.status(resp.status).json(data);
+    const resp = await fetch("https://mercatto.varejofacil.com/resumoDeVendas/geraTotalizadores", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Authorization": `Bearer ${accessToken}`,
+      },
+      body: params.toString(),
+    });
+
+    const data = await resp.json();
+    res.status(200).json(data);
+
   } catch (err) {
     res.status(500).json({ error: "Erro ao buscar resumo", details: err.message });
   }
