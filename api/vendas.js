@@ -1,7 +1,7 @@
 // /api/vendas.js
 export default async function handler(req, res) {
   try {
-    // 1. Autentica primeiro
+    // 1. Autentica
     const authResp = await fetch(`${process.env.BASE_URL}/api/auth`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -15,16 +15,15 @@ export default async function handler(req, res) {
     if (!authData.accessToken) {
       return res.status(401).json({ error: "Falha no login", raw: authData });
     }
-
     const token = authData.accessToken;
 
-    // 2. Pega os parâmetros da query
+    // 2. Pega query
     const { inicio, fim } = req.query;
     if (!inicio || !fim) {
       return res.status(400).json({ error: "Envie ?inicio=YYYY-MM-DD&fim=YYYY-MM-DD" });
     }
 
-    // 3. Faz a requisição para os recebimentos
+    // 3. Faz chamada para recebimentos
     const vendasResp = await fetch(
       `${process.env.BASE_URL}/api/v1/financeiro/recebimentos?dataInicio=${inicio}&dataFim=${fim}`,
       {
@@ -40,7 +39,7 @@ export default async function handler(req, res) {
     try {
       data = JSON.parse(raw);
     } catch {
-      data = { raw }; // se não for JSON válido, retorna como texto
+      data = { raw };
     }
 
     if (!vendasResp.ok) {
