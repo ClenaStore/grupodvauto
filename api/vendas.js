@@ -20,15 +20,15 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Envie ?inicio=YYYY-MM-DD&fim=YYYY-MM-DD" });
     }
 
-    const vendasResp = await fetch(
-      `${process.env.BASE_URL}/api/v1/financeiro/recebimentos?dataInicio=${inicio}&dataFim=${fim}`,
-      {
-        headers: {
-          "Authorization": `Bearer ${authData.accessToken}`,
-          "Content-Type": "application/json"
-        }
-      }
-    );
+const vendasResp = await fetch(
+  `${process.env.BASE_URL}/api/v1/pdv/vendas?dataInicio=${inicio}&dataFim=${fim}`,
+  {
+    headers: {
+      "Authorization": `Bearer ${authData.accessToken}`,
+      "Content-Type": "application/json"
+    }
+  }
+);
 
     const raw = await vendasResp.text();
     let data;
