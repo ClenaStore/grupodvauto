@@ -63,7 +63,7 @@ export default async function handler(req, res) {
     payload.append("filtro.tipoQuebra", "LOJA");
 
     // 3) Chamar o endpoint oficial de totalizadores
-    const urlResumo = "https://mercatto.varejofacil.com/resumoDeVendas/geraTotalizadores";
+    const urlResumo = "https://mercatto.varejofacil.com/v1/financeiro/recebimentos-pdv";
     const vfResp = await fetch(urlResumo, {
       method: "POST",
       headers: {
