@@ -1,48 +1,53 @@
 export default async function handler(req, res) {
   try {
-    // 1. Obter token
+    // 1. Login primeiro
     const authResp = await fetch(`${process.env.VAREJO_FACIL_BASE}/api/auth`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         username: process.env.VAREJO_FACIL_USER,
-        password: process.env.VAREJO_FACIL_PASS
+        password: process.env.VAREJO_FACIL_PASS,
       }),
     });
 
-    const { accessToken } = await authResp.json();
-    if (!accessToken) throw new Error("Falha no login");
+    const authData = await authResp.json();
+    const accessToken = authData?.accessToken;
+    if (!accessToken) {
+      throw new Error("Falha no login");
+    }
 
-    // 2. Montar payload igual ao DevTools
+    // 2. Monta payload no formato correto
     const { inicio, fim } = req.query;
-    const payload = {
+    const payload = new URLSearchParams({
       "filtro.tipoDeData": "DATA_MOVIMENTO",
-      "filtro.periodo.inicio": inicio.split("-").reverse().join("/"), // 2025-09-16 → 16/09/2025
+      "filtro.periodo.inicio": inicio.split("-").reverse().join("/"), // yyyy-mm-dd → dd/mm/yyyy
       "filtro.periodo.termino": fim.split("-").reverse().join("/"),
       "filtro.formato": "FORMA_DE_PAGAMENTO",
-      "filtro.tipoQuebra": "LOJA"
-    };
-
-    // 3. Chamar endpoint certo
-    const resp = await fetch(`${process.env.VAREJO_FACIL_BASE}/resumoDeVendas/geraTotalizadores`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`
-      },
-      body: JSON.stringify(payload)
+      "filtro.tipoQuebra": "LOJA",
     });
 
-    const raw = await resp.text(); // pega como texto
+    // 3. Requisição para o endpoint capturado no DevTools
+    const resp = await fetch(
+      `${process.env.VAREJO_FACIL_BASE}/resumoDeVendas/geraTotalizadores`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: payload,
+      }
+    );
+
+    const raw = await resp.text();
     let data;
     try {
-      data = JSON.parse(raw); // tenta converter para JSON
+      data = JSON.parse(raw);
     } catch {
       return res.status(500).json({ error: "Resposta não é JSON", raw });
     }
 
     res.status(200).json(data);
-
   } catch (err) {
     res.status(500).json({ error: "Erro ao buscar resumo", details: err.message });
   }
