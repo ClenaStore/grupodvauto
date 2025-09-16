@@ -2,92 +2,52 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <title>Resumo de Vendas por Forma de Pagamento</title>
+  <title>Resumo de Vendas por Modalidade</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f9f9f9;
-      padding: 20px;
-    }
-    h1 {
-      text-align: center;
-      margin-bottom: 20px;
-    }
+    body { font-family: Arial, sans-serif; background: #f9fafb; padding: 20px; }
+    h1 { text-align: center; margin-bottom: 20px; }
     button {
-      background: #2563eb;
-      color: white;
-      border: none;
-      padding: 10px 16px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 14px;
-      margin-bottom: 15px;
+      background: #2563eb; color: white; border: none; padding: 10px 16px;
+      border-radius: 6px; cursor: pointer; font-size: 14px; margin-bottom: 15px;
     }
-    button:hover {
-      background: #1e40af;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      background: white;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-    }
-    th, td {
-      border: 1px solid #e5e7eb;
-      padding: 12px;
-      text-align: left;
-    }
-    th {
-      background: #f3f4f6;
-    }
-    tr:nth-child(even) {
-      background: #f9fafb;
-    }
+    button:hover { background: #1e40af; }
+    table { width: 100%; border-collapse: collapse; background: white; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
+    th, td { border: 1px solid #e5e7eb; padding: 12px; text-align: left; }
+    th { background: #f3f4f6; }
+    tr:nth-child(even) { background: #f9fafb; }
   </style>
 </head>
 <body>
-  <h1>Resumo de Vendas por Forma de Pagamento</h1>
+  <h1>Resumo de Vendas por Modalidade</h1>
   <button onclick="carregar()">🔄 Atualizar</button>
   <table>
     <thead>
-      <tr>
-        <th>Forma de Pagamento</th>
-        <th>Total (R$)</th>
-      </tr>
+      <tr><th>Modalidade</th><th>Total (R$)</th></tr>
     </thead>
-    <tbody id="tabela-vendas">
+    <tbody id="tabela">
       <tr><td colspan="2">Carregando...</td></tr>
     </tbody>
   </table>
 
   <script>
     async function carregar() {
-      const tbody = document.getElementById("tabela-vendas");
+      const tbody = document.getElementById("tabela");
       tbody.innerHTML = `<tr><td colspan="2">⏳ Buscando dados...</td></tr>`;
 
       try {
         const hoje = new Date();
-        const inicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1)
-          .toISOString()
-          .split("T")[0];
+        const inicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString().split("T")[0];
         const fim = hoje.toISOString().split("T")[0];
 
         const resp = await fetch(`/api/vendas?inicio=${inicio}&fim=${fim}`);
         const data = await resp.json();
 
-    if (!resp.ok) {
-  tbody.innerHTML = `
-    <tr>
-      <td colspan="2">
-        ❌ Erro: ${data.error || "Falha"} <br>
-        <pre style="white-space:pre-wrap;max-height:200px;overflow:auto;">${data.raw || ''}</pre>
-      </td>
-    </tr>`;
-  console.error("Erro API", data);
-  return;
-}
-
+        if (!resp.ok) {
+          tbody.innerHTML = `<tr><td colspan="2">❌ Erro: ${data.error || "Falha"}</td></tr>`;
+          console.error("Erro API", data);
+          return;
+        }
 
         const resumo = data.resumo || {};
         const formas = Object.keys(resumo);
@@ -97,24 +57,18 @@
           return;
         }
 
-        tbody.innerHTML = formas
-          .map(
-            (f) => `
-            <tr>
-              <td>${f}</td>
-              <td>R$ ${resumo[f].toLocaleString("pt-BR", {
-                minimumFractionDigits: 2,
-              })}</td>
-            </tr>`
-          )
-          .join("");
+        tbody.innerHTML = formas.map(f => `
+          <tr>
+            <td>${f}</td>
+            <td>R$ ${resumo[f].toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</td>
+          </tr>
+        `).join("");
       } catch (err) {
-        tbody.innerHTML = `<tr><td colspan="2">❌ Erro ao carregar</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="2">❌ Erro JS</td></tr>`;
         console.error("Erro JS", err);
       }
     }
 
-    // carrega ao abrir
     carregar();
   </script>
 </body>
