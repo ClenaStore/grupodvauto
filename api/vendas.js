@@ -1,60 +1,65 @@
-import auth from "./auth.js";
-
 export default async function handler(req, res) {
   try {
     const { inicio, fim } = req.query;
 
-    // 🔑 chama o auth.js e pega token
-    const authRes = await new Promise((resolve) => {
-      const mockRes = {
-        status: (code) => ({
-          json: (obj) => resolve({ code, obj }),
-        }),
-      };
-      auth(req, mockRes);
+    // 1. Primeiro autentica
+    const authResp = await fetch("https://mercatto.varejofacil.com/api/v1/auth", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        username: process.env.VAREJO_FACIL_USER,
+        password: process.env.VAREJO_FACIL_PASS
+      }),
     });
 
-    if (authRes.code !== 200 || !authRes.obj.accessToken) {
-      return res
-        .status(401)
-        .json({ error: "Falha ao autenticar", raw: authRes.obj });
+    let authData = {};
+    try {
+      authData = await authResp.json();
+    } catch (e) {
+      return res.status(500).json({ error: "Falha ao parsear resposta do AUTH", raw: "" });
     }
 
-    const token = authRes.obj.accessToken;
+    if (!authResp.ok || !authData.accessToken) {
+      return res.status(401).json({ error: "Falha ao autenticar", raw: authData });
+    }
 
-    // 🔎 busca recebimentos PDV
+    // 2. Busca vendas
     const vendasResp = await fetch(
-      `https://mercatto.varejofacil.com/api/v1/financeiro/recebimentos-pdv?start=0&count=500`,
+      `https://mercatto.varejofacil.com/api/v1/financeiro/recebimentos-pdv?inicio=${inicio}&fim=${fim}`,
       {
-        method: "GET",
         headers: {
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${authData.accessToken}`,
           "Content-Type": "application/json",
         },
       }
     );
 
-    const vendasData = await vendasResp.json();
-
-    if (!vendasResp.ok) {
-      return res
-        .status(vendasResp.status)
-        .json({ error: "Erro ao buscar vendas", raw: vendasData });
+    let vendasData = {};
+    try {
+      vendasData = await vendasResp.json();
+    } catch (e) {
+      return res.status(500).json({ error: "Falha ao parsear resposta de VENDAS", raw: "" });
     }
 
-    // 📊 consolida valores por forma de pagamento
-    const resumo = {};
-    (vendasData.items || []).forEach((item) => {
-      const forma = item.descricao || "Indefinido";
-      const total = (item.lojas || []).reduce(
-        (acc, loja) => acc + (loja.valorRecebimento || 0),
-        0
-      );
-      resumo[forma] = (resumo[forma] || 0) + total;
-    });
+    if (!vendasResp.ok) {
+      return res.status(vendasResp.status).json({
+        error: "Erro ao buscar vendas",
+        raw: vendasData,
+      });
+    }
 
-    return res.status(200).json({ inicio, fim, resumo });
+    // 3. Consolida vendas por forma de pagamento
+    const resumo = {};
+    if (Array.isArray(vendasData)) {
+      vendasData.forEach(v => {
+        const forma = v.formaPagamento || "Não informado";
+        const valor = parseFloat(v.valor || 0);
+        resumo[forma] = (resumo[forma] || 0) + valor;
+      });
+    }
+
+    return res.status(200).json({ resumo, raw: vendasData });
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: err.message, raw: "" });
   }
 }
