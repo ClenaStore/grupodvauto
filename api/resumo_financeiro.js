@@ -18,7 +18,7 @@ export default async function handler(req, res) {
     const token = authData.access_token;
 
     // 2. Buscar cupons fiscais (resumo de vendas)
-    const vendasResponse = await fetch("https://mercatto.varejofacil.com/api/v1/venda/cupons-fiscais", {
+    const vendasResponse = await fetch("https://mercatto.varejofacil.com/api/venda/cupons-fiscais", {
       method: "GET",
       headers: {
         "Authorization": `Bearer ${token}`,
