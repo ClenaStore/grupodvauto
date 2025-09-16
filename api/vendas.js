@@ -18,17 +18,17 @@ export default async function handler(req, res) {
 
     const token = loginData.accessToken;
 
-    // 2. Prepara a query FIQL correta
+    // 2. Filtros recebidos da URL
     const { inicio, fim } = req.query;
     const url = new URL("https://mercatto.varejofacil.com/api/v1/financeiro/recebimentos-pdv");
 
+    // Monta filtro FIQL no formato esperado
     if (inicio && fim) {
-      // FIQL -> campo=ge=YYYY-MM-DD;campo=le=YYYY-MM-DD
       url.searchParams.append("q", `dataRecebimento=ge=${inicio};dataRecebimento=le=${fim}`);
     }
     url.searchParams.append("count", "200");
 
-    // 3. Faz a chamada
+    // 3. Chamada para a API
     const resp = await fetch(url.toString(), {
       headers: {
         "Authorization": `Bearer ${token}`,
@@ -38,7 +38,7 @@ export default async function handler(req, res) {
 
     const text = await resp.text();
 
-    // debug: se não for JSON, retorna o texto puro
+    // Verifica se resposta é JSON
     let data;
     try {
       data = JSON.parse(text);
@@ -46,11 +46,12 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: "Resposta inválida", raw: text });
     }
 
-    if (!data.items) {
+    // 4. Se não houver dados
+    if (!data.items || data.items.length === 0) {
       return res.status(200).json({ total: 0, formas: {}, raw: data });
     }
 
-    // 4. Consolida por forma de pagamento
+    // 5. Consolida por forma de pagamento
     const resumo = {};
     let total = 0;
 
@@ -66,9 +67,9 @@ export default async function handler(req, res) {
       }
     });
 
-    // 5. Retorno consolidado
     res.status(200).json({
-      inicio, fim,
+      inicio,
+      fim,
       total,
       formas: resumo
     });
