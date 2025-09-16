@@ -10,7 +10,7 @@ export default async function handler(req, res) {
     params.append("filtro.formato", "FORMA_DE_PAGAMENTO");
     params.append("filtro.tipoQuebra", "LOJA");
 
-    const authResp = await fetch(`${process.env.VAREJO_FACIL_BASE}/api/auth`, {
+   const authResp = await fetch("https://mercatto.varejofacil.com/api/auth", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
