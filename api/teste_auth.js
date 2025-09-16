@@ -1,22 +1,20 @@
 export default async function handler(req, res) {
-  const authUrl = "https://mercatto.varejofacil.com/api/v1/auth";
-
-  const apiKey = process.env.VAREJO_FACIL_API_KEY;
-
   try {
-    const r = await fetch(authUrl, {
+    const chave = process.env.VAREJO_FACIL_API_KEY; // sua chave cadastrada no painel do Varejo Fácil
+
+    const response = await fetch("https://mercatto.varejofacil.com/api/auth", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chave: apiKey }) // ou { api_key: apiKey }
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ chave })
     });
 
-    const raw = await r.text();
-    try {
-      return res.status(r.status).json(JSON.parse(raw));
-    } catch {
-      return res.status(r.status).send(raw);
-    }
-  } catch (e) {
-    return res.status(500).json({ error: e.message });
+    const data = await response.json();
+
+    res.status(response.status).json(data);
+
+  } catch (error) {
+    res.status(500).json({ error: "Erro ao autenticar", details: error.message });
   }
 }
