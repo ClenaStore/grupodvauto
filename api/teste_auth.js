@@ -1,48 +1,42 @@
 // pages/api/teste_auth.js
 export default async function handler(req, res) {
-  const url = "https://mercatto.varejofacil.com/api/v1/auth";
+  const authUrl = "https://mercatto.varejofacil.com/api/v1/auth";
 
-  // Pega credenciais do .env
-  const key     = process.env.VAREJO_FACIL_API_KEY || "";
-  const client  = process.env.VAREJO_FACIL_CLIENT_ID || "";
-  const secret  = process.env.VAREJO_FACIL_CLIENT_SECRET || "";
+  const clientId  = process.env.VAREJO_FACIL_CLIENT_ID || "";
+  const clientSec = process.env.VAREJO_FACIL_CLIENT_SECRET || "";
+  const apiKey    = process.env.VAREJO_FACIL_API_KEY || "";
 
-  // Três possíveis formatos que a API pode aceitar
+  // 3 formatos possíveis (um deles vai funcionar)
   const payloads = [
-    { chave: key },                       // formato 1
-    { api_key: key },                     // formato 2
-    { client_id: client, client_secret: secret } // formato 3
+    { chave: apiKey },
+    { api_key: apiKey },
+    { client_id: clientId, client_secret: clientSec }
   ];
 
-  const results = [];
+  let ultimoRaw = null;
 
-  for (let i = 0; i < payloads.length; i++) {
+  for (let body of payloads) {
     try {
-      const r = await fetch(url, {
+      const r = await fetch(authUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payloads[i])
+        body: JSON.stringify(body)
       });
 
-      const raw = await r.text(); // pega resposta mesmo se não for JSON
-      let json = null;
-      try { json = JSON.parse(raw); } catch(e) {}
+      const raw = await r.text();
+      ultimoRaw = raw;
 
-      results.push({
-        tentativa: i + 1,
-        status: r.status,
-        enviado: payloads[i],
-        resposta: json || raw
-      });
-
-      if (r.ok) break; // se deu certo, não precisa continuar testando
+      if (r.ok) {
+        try {
+          return res.status(200).json(JSON.parse(raw));
+        } catch {
+          return res.status(200).send(raw);
+        }
+      }
     } catch (e) {
-      results.push({
-        tentativa: i + 1,
-        erro: e.message
-      });
+      ultimoRaw = e.message;
     }
   }
 
-  res.status(200).json({ resultados: results });
+  res.status(401).json({ status: 401, raw: ultimoRaw });
 }
