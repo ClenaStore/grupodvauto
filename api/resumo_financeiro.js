@@ -1,13 +1,16 @@
 // /api/resumo_financeiro.js
 export default async function handler(req, res) {
   try {
-    // valida a senha (já tem no front)
+    // --- Valida senha do painel ---
     const key = req.headers['x-api-key'];
     if (!key || key !== process.env.DV_PAINEL_KEY) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    // 🔑 autenticação no Varejo Fácil
+    // --- Lê filtros vindos da query string ---
+    const { inicio, fim, empresa } = req.query;
+
+    // --- Autenticação no Varejo Fácil ---
     const authResp = await fetch("https://api.varejofacil.com.br/auth/obter_token", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -23,8 +26,16 @@ export default async function handler(req, res) {
     const authData = await authResp.json();
     const token = authData?.access_token;
 
-    // 📊 chama a API de recebimentos
-    const recResp = await fetch("https://api.varejofacil.com.br/financeiro/recebimentos", {
+    // --- Monta URL de recebimentos com filtros ---
+    let url = "https://api.varejofacil.com.br/financeiro/recebimentos";
+    const params = new URLSearchParams();
+    if (inicio) params.append("data_inicio", inicio);
+    if (fim) params.append("data_fim", fim);
+    if (empresa) params.append("empresa", empresa);
+    if ([...params].length > 0) url += "?" + params.toString();
+
+    // --- Chama a API de recebimentos ---
+    const recResp = await fetch(url, {
       headers: { "Authorization": `Bearer ${token}` }
     });
 
@@ -34,10 +45,10 @@ export default async function handler(req, res) {
 
     const recebimentos = await recResp.json();
 
-    // 🔄 mapeia para o formato esperado pelo painel
+    // --- Mapeia para o formato que o index espera ---
     const dados = recebimentos.map(r => ({
       Empresa: r.empresa_nome || "Não informado",
-      Data: r.data_recebimento?.split("T")[0] || "",
+      Data: (r.data_recebimento || "").split("T")[0], // YYYY-MM-DD
       Categoria: r.forma_pagamento || "OUTROS",
       Valor: r.valor || 0
     }));
