@@ -1,8 +1,8 @@
-// /pages/api/recebimentos.js
+// /api/recebimentos.js
 export default async function handler(req, res) {
   try {
-    // 1. Autenticar para obter o token
-    const authResp = await fetch("https://mercatto.varejofacil.com/api/v1/auth", {
+    // 1. Autentica e gera o token
+    const authResp = await fetch("https://mercatto.varejofacil.com/api/auth", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -11,32 +11,34 @@ export default async function handler(req, res) {
       })
     });
 
+    const authData = await authResp.json();
     if (!authResp.ok) {
-      throw new Error("Falha ao autenticar");
+      return res.status(authResp.status).json(authData);
     }
 
-    const authData = await authResp.json();
     const token = authData.accessToken;
 
-    // 2. Monta a URL com filtros opcionais
+    // 2. Chama os recebimentos PDV já autenticado
     const { inicio, fim } = req.query;
-    let url = "https://mercatto.varejofacil.com/api/v1/financeiro/recebimentos-pdv";
+    const url = new URL("https://mercatto.varejofacil.com/api/v1/financeiro/recebimentos-pdv");
 
-    const params = new URLSearchParams();
-    if (inicio) params.append("dataInicio", inicio);
-    if (fim) params.append("dataFim", fim);
-    if ([...params].length > 0) url += "?" + params.toString();
+    // filtros opcionais (exemplo: periodo ou paginação)
+    if (inicio && fim) {
+      url.searchParams.append("q", `dataRecebimento=ge=${inicio};dataRecebimento=le=${fim}`);
+    }
+    url.searchParams.append("count", "100"); // exemplo: retorna 100 linhas
 
-    // 3. Consulta o endpoint protegido
-    const recResp = await fetch(url, {
+    const resp = await fetch(url.toString(), {
       headers: { Authorization: `Bearer ${token}` }
     });
 
-    const dados = await recResp.json();
-
-    // 4. Retorna JSON direto
-    res.status(recResp.status).json(dados);
-
+    const text = await resp.text();
+    try {
+      const data = JSON.parse(text);
+      res.status(resp.status).json(data);
+    } catch {
+      res.status(resp.status).json({ raw: text });
+    }
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
