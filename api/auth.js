@@ -1,4 +1,3 @@
-// /api/auth.js
 export default async function handler(req, res) {
   try {
     const resp = await fetch("https://mercatto.varejofacil.com/api/auth", {
@@ -6,21 +5,28 @@ export default async function handler(req, res) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         username: process.env.VAREJO_FACIL_USER,
-        password: process.env.VAREJO_FACIL_PASS
-      })
+        password: process.env.VAREJO_FACIL_PASS,
+      }),
     });
 
-    const data = await resp.json();
+    // se a resposta não for JSON, captura como texto
+    const text = await resp.text();
+    let data;
 
-    if (!resp.ok) {
-      return res.status(resp.status).json({ error: "Falha na autenticação", raw: data });
+    try {
+      data = JSON.parse(text);
+    } catch {
+      return res
+        .status(resp.status || 500)
+        .json({ error: "Resposta AUTH não é JSON", raw: text });
     }
 
-    res.status(200).json({
-      accessToken: data.accessToken,
-      refreshToken: data.refreshToken
-    });
+    if (!resp.ok) {
+      return res.status(resp.status).json({ error: "Erro no AUTH", raw: data });
+    }
+
+    return res.status(200).json(data);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: err.message });
   }
 }
