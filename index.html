@@ -1,18 +1,24 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <title>Resumo de Vendas por Modalidade</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8" />
+  <title>Resumo de Vendas</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     body { font-family: Arial, sans-serif; background: #f9f9f9; padding: 20px; }
-    h1 { text-align: center; }
-    table { width: 100%; border-collapse: collapse; margin-top: 20px; background: #fff; }
-    th, td { padding: 10px; border: 1px solid #ddd; text-align: left; }
-    th { background: #2563eb; color: white; }
-    tr:nth-child(even) { background: #f3f4f6; }
-    button { background: #2563eb; color: white; border: none; padding: 10px; cursor: pointer; }
+    h1 { text-align: center; margin-bottom: 20px; }
+    button {
+      background: #2563eb; color: white; border: none; padding: 10px 16px;
+      border-radius: 6px; cursor: pointer; font-size: 14px; margin-bottom: 15px;
+    }
     button:hover { background: #1e40af; }
+    table {
+      width: 100%; border-collapse: collapse; background: white;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+    th, td { border: 1px solid #e5e7eb; padding: 12px; text-align: left; }
+    th { background: #f3f4f6; }
+    tr:nth-child(even) { background: #f9fafb; }
   </style>
 </head>
 <body>
@@ -20,41 +26,56 @@
   <button onclick="carregar()">🔄 Atualizar</button>
   <table>
     <thead>
-      <tr><th>Forma de Pagamento</th><th>Total (R$)</th></tr>
+      <tr>
+        <th>Forma de Pagamento</th>
+        <th>Total (R$)</th>
+      </tr>
     </thead>
-    <tbody id="tabela">
+    <tbody id="tabela-vendas">
       <tr><td colspan="2">Carregando...</td></tr>
     </tbody>
   </table>
 
   <script>
     async function carregar() {
-      const hoje = new Date();
-      const inicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString().split("T")[0];
-      const fim = hoje.toISOString().split("T")[0];
-
-      const tabela = document.getElementById("tabela");
-      tabela.innerHTML = `<tr><td colspan="2">⏳ Buscando...</td></tr>`;
+      const tbody = document.getElementById("tabela-vendas");
+      tbody.innerHTML = `<tr><td colspan="2">⏳ Buscando dados...</td></tr>`;
 
       try {
+        const hoje = new Date();
+        const inicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1)
+          .toISOString().split("T")[0];
+        const fim = hoje.toISOString().split("T")[0];
+
         const resp = await fetch(`/api/vendas?inicio=${inicio}&fim=${fim}`);
         const data = await resp.json();
 
         if (!resp.ok) {
-          tabela.innerHTML = `<tr><td colspan="2">❌ Erro: ${data.error}</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="2">❌ Erro: ${data.error || "Falha"}</td></tr>`;
           return;
         }
 
-        const resumo = data.resumo || {};
-        const linhas = Object.entries(resumo).map(([f, v]) => `
-          <tr><td>${f}</td><td>R$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</td></tr>
-        `).join("");
+        // aqui assumimos que API devolve um objeto agrupado por modalidade
+        const formas = Object.keys(data);
 
-        tabela.innerHTML = linhas || `<tr><td colspan="2">Nenhum dado encontrado</td></tr>`;
+        if (formas.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="2">Nenhum dado encontrado</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = formas.map(
+          f => `
+            <tr>
+              <td>${f}</td>
+              <td>R$ ${data[f].toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</td>
+            </tr>`
+        ).join("");
       } catch (err) {
-        tabela.innerHTML = `<tr><td colspan="2">❌ Erro JS</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="2">❌ Erro ao carregar</td></tr>`;
+        console.error(err);
       }
     }
+
     carregar();
   </script>
 </body>
