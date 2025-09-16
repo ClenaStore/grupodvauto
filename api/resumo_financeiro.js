@@ -1,49 +1,39 @@
+// /api/resumo_financeiro.js
 export default async function handler(req, res) {
   try {
-    const chave = process.env.VAREJO_FACIL_API_KEY;
-
-    // 1. Autenticação
-    const authResponse = await fetch("https://mercatto.varejofacil.com/api/auth", {
+    // 1. Autenticar
+    const authResp = await fetch("https://mercatto.varejofacil.com/api/auth", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chave })
+      body: JSON.stringify({
+        username: process.env.VAREJO_FACIL_USER,
+        password: process.env.VAREJO_FACIL_PASS
+      })
     });
 
-    const authData = await authResponse.json();
+    const authData = await authResp.json();
+    const token = authData.accessToken;
 
-    if (!authResponse.ok) {
-      return res.status(authResponse.status).json({ error: "Falha na autenticação", authData });
+    if (!token) {
+      throw new Error("Falha na autenticação, token não recebido.");
     }
 
-    const token = authData.access_token;
-
-    // 2. Buscar cupons fiscais (resumo de vendas)
-    const vendasResponse = await fetch("https://mercatto.varejofacil.com/api/venda/cupons-fiscais", {
-      method: "GET",
-      headers: {
-        "Authorization": `Bearer ${token}`,
-        "Content-Type": "application/json"
-      }
+    // 2. Buscar dados financeiros (ajuste a URL correta do endpoint)
+    const url = "https://mercatto.varejofacil.com/api/v1/financeiro/contas-receber";
+    const resp = await fetch(url, {
+      headers: { "Authorization": `Bearer ${token}` }
     });
 
-    const vendas = await vendasResponse.json();
-
-    if (!vendasResponse.ok) {
-      return res.status(vendasResponse.status).json({ error: "Falha ao carregar vendas", vendas });
+    if (!resp.ok) {
+      throw new Error(`Erro ao buscar dados: ${resp.status}`);
     }
 
-    // 3. Resumir por forma de pagamento
-    const resumo = {};
-    vendas.forEach(venda => {
-      const forma = venda.formaPagamento || "DESCONHECIDA";
-      const valor = venda.valorTotal || 0;
+    const dados = await resp.json();
 
-      resumo[forma] = (resumo[forma] || 0) + valor;
-    });
+    // 3. Retornar o JSON para o frontend
+    res.status(200).json(dados);
 
-    res.status(200).json({ totalVendas: resumo, vendas });
-
-  } catch (error) {
-    res.status(500).json({ error: "Erro ao buscar resumo financeiro", details: error.message });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 }
