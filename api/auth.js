@@ -1,4 +1,4 @@
-// /pages/api/auth.js
+// /api/auth.js
 export default async function handler(req, res) {
   try {
     const resp = await fetch("https://mercatto.varejofacil.com/api/v1/auth", {
@@ -10,8 +10,12 @@ export default async function handler(req, res) {
       })
     });
 
+    if (!resp.ok) {
+      return res.status(resp.status).json({ error: "Erro na autenticação" });
+    }
+
     const data = await resp.json();
-    res.status(resp.status).json(data);
+    res.status(200).json(data); // retorna accessToken e refreshToken
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
