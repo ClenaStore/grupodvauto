@@ -2,7 +2,7 @@ export default async function handler(req, res) {
   try {
     const { inicio, fim } = req.query;
 
-    // 1. Primeiro autentica
+    // 1. Tenta autenticar
     const authResp = await fetch("https://mercatto.varejofacil.com/api/v1/auth", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -12,15 +12,23 @@ export default async function handler(req, res) {
       }),
     });
 
-    let authData = {};
+    const rawAuth = await authResp.text(); // pega texto cru da resposta
+
+    let authData;
     try {
-      authData = await authResp.json();
+      authData = JSON.parse(rawAuth); // tenta converter em JSON
     } catch (e) {
-      return res.status(500).json({ error: "Falha ao parsear resposta do AUTH", raw: "" });
+      return res.status(500).json({
+        error: "Falha ao parsear resposta do AUTH",
+        raw: rawAuth, // mostra conteúdo bruto
+      });
     }
 
     if (!authResp.ok || !authData.accessToken) {
-      return res.status(401).json({ error: "Falha ao autenticar", raw: authData });
+      return res.status(401).json({
+        error: "Falha ao autenticar",
+        raw: authData,
+      });
     }
 
     // 2. Busca vendas
@@ -34,11 +42,16 @@ export default async function handler(req, res) {
       }
     );
 
-    let vendasData = {};
+    const rawVendas = await vendasResp.text();
+
+    let vendasData;
     try {
-      vendasData = await vendasResp.json();
+      vendasData = JSON.parse(rawVendas);
     } catch (e) {
-      return res.status(500).json({ error: "Falha ao parsear resposta de VENDAS", raw: "" });
+      return res.status(500).json({
+        error: "Falha ao parsear resposta de VENDAS",
+        raw: rawVendas,
+      });
     }
 
     if (!vendasResp.ok) {
