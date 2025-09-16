@@ -1,7 +1,6 @@
-// /api/vendas.js
 export default async function handler(req, res) {
   try {
-    // 1. Autentica
+    // 1. Login na API
     const login = await fetch("https://mercatto.varejofacil.com/api/auth", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -18,17 +17,17 @@ export default async function handler(req, res) {
 
     const token = loginData.accessToken;
 
-    // 2. Filtros recebidos da URL
+    // 2. Pega datas da query
     const { inicio, fim } = req.query;
-    const url = new URL("https://mercatto.varejofacil.com/api/v1/financeiro/recebimentos-pdv");
 
-    // Monta filtro FIQL no formato esperado
+    // 🔑 Monta URL correta com FIQL
+    const url = new URL("https://mercatto.varejofacil.com/api/v1/financeiro/recebimentos-pdv");
     if (inicio && fim) {
       url.searchParams.append("q", `dataRecebimento=ge=${inicio};dataRecebimento=le=${fim}`);
     }
     url.searchParams.append("count", "200");
 
-    // 3. Chamada para a API
+    // 3. Faz requisição
     const resp = await fetch(url.toString(), {
       headers: {
         "Authorization": `Bearer ${token}`,
@@ -38,7 +37,6 @@ export default async function handler(req, res) {
 
     const text = await resp.text();
 
-    // Verifica se resposta é JSON
     let data;
     try {
       data = JSON.parse(text);
@@ -46,7 +44,7 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: "Resposta inválida", raw: text });
     }
 
-    // 4. Se não houver dados
+    // 4. Se não houver items
     if (!data.items || data.items.length === 0) {
       return res.status(200).json({ total: 0, formas: {}, raw: data });
     }
