@@ -2,72 +2,57 @@ export default async function handler(req, res) {
   try {
     const { inicio, fim } = req.query;
 
-    // === LOGIN AUTH ===
-    const authResp = await fetch("https://mercatto.varejofacil.com/api/v1/auth", {
+    // 1. LOGIN
+    const loginResp = await fetch("https://mercatto.varejofacil.com/api/v1/auth", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         username: process.env.VAREJO_FACIL_USER,
         password: process.env.VAREJO_FACIL_PASS
-      }),
+      })
     });
 
-    const rawAuth = await authResp.text(); // pega o texto bruto
-    console.log("AUTH RAW:", rawAuth); // log em console
-
-    let authData;
+    const loginText = await loginResp.text(); // pega texto cru
+    let loginData;
     try {
-      authData = JSON.parse(rawAuth);
-    } catch (e) {
-      return res.status(500).json({
-        error: "Falha ao parsear resposta do AUTH",
-        raw: rawAuth, // devolve o que veio de fato
-      });
+      loginData = JSON.parse(loginText);
+    } catch {
+      return res.status(500).json({ error: "Falha ao parsear resposta do AUTH", raw: loginText });
     }
 
-    if (!authResp.ok || !authData.accessToken) {
-      return res.status(401).json({
-        error: "Falha ao autenticar",
-        raw: rawAuth,
-      });
+    if (!loginData.accessToken) {
+      return res.status(401).json({ error: "AUTH falhou", raw: loginData });
     }
 
-    // === BUSCA VENDAS ===
+    const token = loginData.accessToken;
+
+    // 2. BUSCAR VENDAS
     const vendasResp = await fetch(
       `https://mercatto.varejofacil.com/api/v1/financeiro/recebimentos-pdv?inicio=${inicio}&fim=${fim}`,
       {
-        headers: {
-          Authorization: `Bearer ${authData.accessToken}`,
-          "Content-Type": "application/json",
-        },
+        headers: { Authorization: `Bearer ${token}` }
       }
     );
 
-    const rawVendas = await vendasResp.text();
-    console.log("VENDAS RAW:", rawVendas);
-
+    const vendasText = await vendasResp.text(); // pega texto cru
     let vendasData;
     try {
-      vendasData = JSON.parse(rawVendas);
-    } catch (e) {
-      return res.status(500).json({
-        error: "Falha ao parsear resposta de VENDAS",
-        raw: rawVendas,
-      });
+      vendasData = JSON.parse(vendasText);
+    } catch {
+      return res.status(500).json({ error: "Falha ao parsear resposta do VENDAS", raw: vendasText });
     }
 
-    // === CONSOLIDA POR FORMA DE PAGAMENTO ===
+    // 3. RESUMIR POR FORMA DE PAGAMENTO
     const resumo = {};
     if (Array.isArray(vendasData)) {
       vendasData.forEach(v => {
-        const forma = v.formaPagamento || "Não informado";
-        const valor = parseFloat(v.valor || 0);
-        resumo[forma] = (resumo[forma] || 0) + valor;
+        const forma = v.formaPagamento || "Indefinido";
+        resumo[forma] = (resumo[forma] || 0) + (v.valor || 0);
       });
     }
 
-    return res.status(200).json({ resumo, raw: vendasData });
+    res.status(200).json({ resumo, raw: vendasData });
   } catch (err) {
-    return res.status(500).json({ error: err.message, raw: "" });
+    res.status(500).json({ error: err.message });
   }
 }
