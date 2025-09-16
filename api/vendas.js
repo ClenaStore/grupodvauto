@@ -1,80 +1,41 @@
 // /api/vendas.js
-// Retorna os cupons fiscais (vendas) do VarejoFácil via /api/v1/venda/cupons-fiscais
-
-function ymdToBr(d) {
-  const [y, m, day] = d.split("-");
-  return `${day}/${m}/${y}`;
-}
-
-function getBaseUrl(req) {
-  const proto = req.headers["x-forwarded-proto"] || "https";
-  const host = req.headers["x-forwarded-host"] || req.headers.host;
-  return `${proto}://${host}`;
-}
-
 export default async function handler(req, res) {
-  const { inicio, fim } = req.query;
-
-  if (!inicio || !fim) {
-    return res.status(400).json({
-      error: "Parâmetros inválidos",
-      message: "Use ?inicio=YYYY-MM-DD&fim=YYYY-MM-DD",
-    });
-  }
-
   try {
-    // 1. Autenticação - pega token de /api/auth
-    const baseUrl = getBaseUrl(req);
-    const authResp = await fetch(`${baseUrl}/api/auth`);
-    const authBody = await authResp.text();
-    let authJson;
-    try {
-      authJson = JSON.parse(authBody);
-    } catch {
-      return res.status(500).json({
-        error: "Falha em /api/auth",
-        raw: authBody,
-      });
-    }
+    const { inicio, fim } = req.query;
 
-    const token = authJson.accessToken;
-    if (!token) {
-      return res.status(401).json({
-        error: "Token ausente",
-        raw: authJson,
-      });
-    }
-
-    // 2. Busca os cupons fiscais
-    const url = `https://mercatto.varejofacil.com/api/v1/venda/cupons-fiscais?dataInicio=${ymdToBr(inicio)}&dataFim=${ymdToBr(fim)}`;
-    const vfResp = await fetch(url, {
-      method: "GET",
-      headers: {
-        "Authorization": `Bearer ${token}`,
-        "Accept": "application/json",
-      },
+    // 1. Buscar token no seu próprio endpoint auth
+    const authResp = await fetch(`${process.env.VERCEL_URL}/api/auth`, {
+      method: "POST",
     });
 
-    const raw = await vfResp.text();
-
-    if (!vfResp.ok) {
-      return res.status(vfResp.status).json({
-        error: "Erro ao buscar cupons fiscais",
-        status: vfResp.status,
-        raw,
-      });
+    const authData = await authResp.json();
+    if (!authData.accessToken) {
+      return res.status(401).json({ error: "Falha ao autenticar", raw: authData });
     }
 
-    let data;
+    // 2. Chamar cupons fiscais com o token
+    const apiResp = await fetch("https://mercatto.varejofacil.com/api/v1/venda/cupons-fiscais", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${authData.accessToken}`,
+      },
+      body: JSON.stringify({
+        dataInicio: inicio,
+        dataFim: fim,
+      }),
+    });
+
+    const raw = await apiResp.text();
+
+    // 3. Se não for JSON válido, retorna texto cru
     try {
-      data = JSON.parse(raw);
-    } catch {
-      return res.status(500).json({ error: "Resposta não é JSON", raw });
+      const data = JSON.parse(raw);
+      return res.status(apiResp.status).json(data);
+    } catch (e) {
+      return res.status(apiResp.status).json({ raw });
     }
-
-    return res.status(200).json(data);
-
   } catch (err) {
-    return res.status(500).json({ error: "Erro interno", details: err.message });
+    return res.status(500).json({ error: "Erro ao buscar cupons fiscais", details: err.message });
   }
 }
