@@ -1,42 +1,55 @@
+// /api/vendas.js
 export default async function handler(req, res) {
   try {
-    const { inicio, fim } = req.query;
+    // 1. Autentica primeiro
+    const authResp = await fetch(`${process.env.BASE_URL}/api/auth`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        username: process.env.VAREJO_FACIL_USER,
+        password: process.env.VAREJO_FACIL_PASS
+      })
+    });
 
-    // Pega o token do auth.js
-    const authResp = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/auth`);
     const authData = await authResp.json();
-
-    if (!authResp.ok || !authData.accessToken) {
-      return res.status(401).json({
-        error: "Falha no login em vendas.js",
-        raw: authData,
-      });
+    if (!authData.accessToken) {
+      return res.status(401).json({ error: "Falha no login", raw: authData });
     }
 
     const token = authData.accessToken;
 
-    // Teste direto no endpoint de vendas
-    const url = `https://mercatto.varejofacil.com/api/v1/vendas?inicio=${inicio}&fim=${fim}`;
-    const resp = await fetch(url, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    // 2. Pega os parâmetros da query
+    const { inicio, fim } = req.query;
+    if (!inicio || !fim) {
+      return res.status(400).json({ error: "Envie ?inicio=YYYY-MM-DD&fim=YYYY-MM-DD" });
+    }
 
-    const rawText = await resp.text();
+    // 3. Faz a requisição para os recebimentos
+    const vendasResp = await fetch(
+      `${process.env.BASE_URL}/api/v1/financeiro/recebimentos?dataInicio=${inicio}&dataFim=${fim}`,
+      {
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        }
+      }
+    );
 
-    return res.status(200).json({
-      status: resp.status,
-      url,
-      raw: rawText,
-    });
+    const raw = await vendasResp.text();
+    let data;
+    try {
+      data = JSON.parse(raw);
+    } catch {
+      data = { raw }; // se não for JSON válido, retorna como texto
+    }
+
+    if (!vendasResp.ok) {
+      return res.status(vendasResp.status).json({ error: "Falha ao buscar vendas", data });
+    }
+
+    return res.status(200).json(data);
 
   } catch (err) {
-    return res.status(500).json({
-      error: "Erro interno em vendas.js",
-      details: err.message,
-    });
+    return res.status(500).json({ error: "Erro interno em vendas.js", details: err.message });
   }
 }
