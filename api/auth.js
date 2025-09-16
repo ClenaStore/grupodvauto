@@ -1,7 +1,7 @@
-// /api/teste_auth.js
+// /pages/api/auth.js
 export default async function handler(req, res) {
   try {
-    const resp = await fetch("https://mercatto.varejofacil.com/api/auth", {
+    const resp = await fetch("https://mercatto.varejofacil.com/api/v1/auth", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -10,15 +10,7 @@ export default async function handler(req, res) {
       })
     });
 
-    const raw = await resp.text(); // pega a resposta como texto
-
-    let data;
-    try {
-      data = JSON.parse(raw); // tenta converter em JSON
-    } catch {
-      data = { raw }; // se não for JSON, retorna o texto cru
-    }
-
+    const data = await resp.json();
     res.status(resp.status).json(data);
   } catch (err) {
     res.status(500).json({ error: err.message });
