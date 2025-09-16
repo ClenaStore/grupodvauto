@@ -76,11 +76,18 @@
         const resp = await fetch(`/api/vendas?inicio=${inicio}&fim=${fim}`);
         const data = await resp.json();
 
-        if (!resp.ok) {
-          tbody.innerHTML = `<tr><td colspan="2">❌ Erro: ${data.error || "Falha"}</td></tr>`;
-          console.error("Erro API", data);
-          return;
-        }
+    if (!resp.ok) {
+  tbody.innerHTML = `
+    <tr>
+      <td colspan="2">
+        ❌ Erro: ${data.error || "Falha"} <br>
+        <pre style="white-space:pre-wrap;max-height:200px;overflow:auto;">${data.raw || ''}</pre>
+      </td>
+    </tr>`;
+  console.error("Erro API", data);
+  return;
+}
+
 
         const resumo = data.resumo || {};
         const formas = Object.keys(resumo);
