@@ -1,38 +1,41 @@
+// /api/vendas.js
+import getToken from "./auth";
+
 export default async function handler(req, res) {
+  const { inicio, fim } = req.query;
+
   try {
-    const { inicio, fim } = req.query;
-
-    // 1. Obter token da nossa rota /api/auth
-    const authResp = await fetch(`${process.env.BASE_URL}/api/auth`);
-    const authData = await authResp.json();
-
-    if (!authData.accessToken) {
-      return res.status(401).json({ error: "Falha no login", data: authData });
+    // 1. pegar token
+    const tokenData = await getToken();
+    if (!tokenData?.accessToken) {
+      return res.status(401).json({ error: "Falha no login" });
     }
 
-    // 2. Buscar vendas direto no endpoint oficial
-    const vendasResp = await fetch(
-      `https://mercatto.varejofacil.com/api/v1/pdv/vendas?dataInicio=${inicio}&dataFim=${fim}`,
-      {
-        headers: {
-          "Authorization": `Bearer ${authData.accessToken}`,
-          "Content-Type": "application/json"
-        }
-      }
-    );
+    // 2. chamar o endpoint correto
+    const resp = await fetch("https://mercatto.varejofacil.com/resumoDeVendas/geraTotalizadores", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${tokenData.accessToken}`,
+      },
+      body: JSON.stringify({
+        dataInicio: inicio,
+        dataFim: fim,
+        // aqui talvez precise passar também "empresaId" ou "lojaId"
+        // vamos confirmar no Payload do DevTools
+      }),
+    });
 
-    const raw = await vendasResp.text();
+    const raw = await resp.text();
     let data;
-
     try {
-      data = JSON.parse(raw); // tenta converter
-    } catch (err) {
-      data = { raw }; // se não for JSON válido, manda cru
+      data = JSON.parse(raw);
+    } catch (e) {
+      data = { raw };
     }
 
-    res.status(vendasResp.status).json(data);
-
+    res.status(resp.status).json(data);
   } catch (err) {
-    res.status(500).json({ error: "Erro interno em vendas.js", details: err.message });
+    res.status(500).json({ error: "Erro ao buscar resumo", details: err.message });
   }
 }
