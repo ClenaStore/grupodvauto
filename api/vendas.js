@@ -3,7 +3,7 @@ export default async function handler(req, res) {
   try {
     const { inicio, fim } = req.query;
 
-    // 1. Primeiro autentica (gera token)
+    // 1. Autenticar
     const authResp = await fetch("https://mercatto.varejofacil.com/api/v1/auth", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -13,14 +13,21 @@ export default async function handler(req, res) {
       })
     });
 
-    const authData = await authResp.json();
+    const authText = await authResp.text();
+    let authData;
+    try {
+      authData = JSON.parse(authText);
+    } catch (e) {
+      return res.status(500).json({ error: "Falha ao parsear resposta do AUTH", raw: authText });
+    }
+
     if (!authResp.ok || !authData.accessToken) {
       return res.status(401).json({ error: "Falha ao autenticar", raw: authData });
     }
 
     const token = authData.accessToken;
 
-    // 2. Busca os recebimentos consolidados
+    // 2. Buscar recebimentos
     const vendasResp = await fetch(
       `https://mercatto.varejofacil.com/api/v1/financeiro/recebimentos-pdv?inicio=${inicio}&fim=${fim}`,
       {
@@ -32,16 +39,14 @@ export default async function handler(req, res) {
       }
     );
 
-    const vendasData = await vendasResp.json();
-
-    if (!vendasResp.ok) {
-      return res.status(vendasResp.status).json({
-        error: "Erro ao buscar vendas",
-        raw: vendasData
-      });
+    const raw = await vendasResp.text(); // pega o texto cru
+    let vendasData;
+    try {
+      vendasData = JSON.parse(raw);
+    } catch (e) {
+      return res.status(vendasResp.status).json({ error: "Resposta inválida", raw });
     }
 
-    // 3. Retorna o JSON direto para o navegador
     res.status(200).json(vendasData);
 
   } catch (err) {
