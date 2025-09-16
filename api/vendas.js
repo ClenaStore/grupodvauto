@@ -1,6 +1,6 @@
 export default async function handler(req, res) {
   try {
-    // 1. Login na API
+    // 1. Autenticação
     const login = await fetch("https://mercatto.varejofacil.com/api/auth", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -17,18 +17,16 @@ export default async function handler(req, res) {
 
     const token = loginData.accessToken;
 
-    // 2. Pega datas da query
+    // 2. Monta a URL
     const { inicio, fim } = req.query;
+    let url = "https://mercatto.varejofacil.com/api/v1/financeiro/recebimentos-pdv";
 
-    // 🔑 Monta URL correta com FIQL
-    const url = new URL("https://mercatto.varejofacil.com/api/v1/financeiro/recebimentos-pdv");
     if (inicio && fim) {
-      url.searchParams.append("q", `dataRecebimento=ge=${inicio};dataRecebimento=le=${fim}`);
+      url += `?q=dataRecebimento=ge=${inicio};dataRecebimento=le=${fim}&count=200`;
     }
-    url.searchParams.append("count", "200");
 
-    // 3. Faz requisição
-    const resp = await fetch(url.toString(), {
+    // 3. Chamada da API
+    const resp = await fetch(url, {
       headers: {
         "Authorization": `Bearer ${token}`,
         "Accept": "application/json"
@@ -44,33 +42,7 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: "Resposta inválida", raw: text });
     }
 
-    // 4. Se não houver items
-    if (!data.items || data.items.length === 0) {
-      return res.status(200).json({ total: 0, formas: {}, raw: data });
-    }
-
-    // 5. Consolida por forma de pagamento
-    const resumo = {};
-    let total = 0;
-
-    data.items.forEach(item => {
-      if (item.lojas) {
-        item.lojas.forEach(loja => {
-          const forma = loja.tipoRecebimento || "DESCONHECIDO";
-          const valor = loja.valorRecebimento || 0;
-
-          resumo[forma] = (resumo[forma] || 0) + valor;
-          total += valor;
-        });
-      }
-    });
-
-    res.status(200).json({
-      inicio,
-      fim,
-      total,
-      formas: resumo
-    });
+    return res.status(200).json(data);
 
   } catch (err) {
     res.status(500).json({ error: err.message });
