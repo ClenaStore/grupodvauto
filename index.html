@@ -1,155 +1,129 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <title>Parcelas - Grupo DV</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/pt.js"></script>
   <style>
-    body {
-      margin: 0;
-      font-family: Inter, system-ui, sans-serif;
-      background: #0b1220;
-      color: #e5f0ff;
+    :root {
+      --bg:#0b1220;--card:#0f172a;--ink:#e5f0ff;--muted:#a8b3c7;--line:#243043;
+      --teal:#06b6d4;--blue:#4f46e5;--green:#16a34a;--red:#ef4444;--amber:#f59e0b;
     }
-    header {
-      padding: 12px;
-      background: #0f172a;
-      border-bottom: 1px solid #243043;
-    }
-    header h1 { margin: 0; font-size: 18px; font-weight: 800; }
-    .filtros {
-      display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px;
-    }
-    select, input {
-      background: #0b1528;
-      border: 1px solid #22314b;
-      color: #e5f0ff;
-      padding: 8px 12px;
-      border-radius: 8px;
-      font-size: 14px;
-    }
-    table {
-      width: 100%; border-collapse: collapse; margin-top: 16px;
-    }
-    th, td {
-      padding: 10px;
-      border-bottom: 1px solid #243043;
-      text-align: left;
-      font-size: 14px;
-    }
-    th { background: #101a2f; }
-    tr:hover { background: #162033; }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:var(--bg);color:var(--ink);font-family:Inter,system-ui,sans-serif;font-size:15px;padding:12px}
+    header{margin-bottom:16px}
+    header h1{font-size:20px;font-weight:800;margin-bottom:10px}
+    .filtros{display:flex;flex-wrap:wrap;gap:10px}
+    select,input{background:#0b1528;border:1px solid #22314b;color:var(--ink);
+      padding:8px 12px;border-radius:8px;font-size:14px}
+    table{width:100%;border-collapse:collapse;margin-top:20px}
+    th,td{padding:10px;text-align:left;font-size:14px}
+    th{background:#0f172a;border-bottom:1px solid var(--line)}
+    tr:nth-child(even){background:#0b1528}
+    tr:hover{background:#1a2236}
   </style>
 </head>
 <body>
   <header>
     <h1>Parcelas - Grupo DV</h1>
     <div class="filtros">
-      <input type="text" id="filtroPeriodo" placeholder="Selecione período">
+      <input type="text" id="filtroPeriodo" placeholder="Selecione período" />
       <select id="filtroEmpresa">
-        <option value="Todas">Todas</option>
+        <option value="">Todas</option>
         <option value="MERCATTO DELÍCIA">MERCATTO DELÍCIA</option>
         <option value="VILLA GOURMET">VILLA GOURMET</option>
         <option value="PADARIA DELÍCIA">PADARIA DELÍCIA</option>
         <option value="M.KIDS">M.KIDS</option>
+        <option value="DELÍCIA GOURMET">DELÍCIA GOURMET</option>
       </select>
       <select id="filtroStatus">
-        <option value="Todos">Todos</option>
+        <option value="">Todos</option>
         <option value="Aberto">Aberto</option>
-        <option value="Pago">Pago</option>
+        <option value="Liquidado">Liquidado</option>
         <option value="Cancelado">Cancelado</option>
       </select>
     </div>
   </header>
 
-  <main style="padding:16px">
-    <table>
-      <thead>
-        <tr>
-          <th>Fornecedor</th>
-          <th>Empresa</th>
-          <th>Vencimento</th>
-          <th>Valor</th>
-          <th>Meio</th>
-          <th>Status</th>
-        </tr>
-      </thead>
-      <tbody id="tabelaParcelas"></tbody>
-    </table>
-  </main>
+  <table>
+    <thead>
+      <tr>
+        <th>Fornecedor</th>
+        <th>Empresa</th>
+        <th>Vencimento</th>
+        <th>Valor</th>
+        <th>Meio</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody id="listaParcelas"></tbody>
+  </table>
 
   <script>
-    const $ = (id) => document.getElementById(id);
-    const BRL = (n) => (isNaN(n) ? 0 : n).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+    const $ = id => document.getElementById(id);
+    const BRL = v => Number(v||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
     let periodoInicio = null, periodoFim = null;
 
-    // 🔹 Busca parcelas no backend (proxy da Vercel)
-    async function fetchParcelas() {
+    async function fetchParcelas(){
       const empresa = $("filtroEmpresa").value;
-      const status = $("filtroStatus").value;
+      const statusFiltro = $("filtroStatus").value;
 
       const inicio = periodoInicio || new Date().toISOString().slice(0,10);
-      const fim = periodoFim   || new Date().toISOString().slice(0,10);
+      const fim = periodoFim || new Date().toISOString().slice(0,10);
 
       try {
-        const r = await fetch(`/api/f360?inicio=${inicio}&fim=${fim}`);
-        const d = await r.json();
-        console.log("Resposta da API:", d);
+        const r = await fetch(`/api/f360?inicio=${inicio}&fim=${fim}&tipo=Despesa`);
+        const j = await r.json();
+        const parcelas = j.Result?.Parcelas || [];
 
-        let parcelas = d.Result?.Parcelas || [];
+        const filtradas = parcelas.filter(p=>{
+          const empOk = !empresa || p.DadosDoTitulo.Empresa.Nome===empresa;
+          const st = p.Status.split(" ")[0]; // pega "Aberto", "Liquidado", etc.
+          const stOk = !statusFiltro || st===statusFiltro;
+          return empOk && stOk;
+        });
 
-        // Filtros front
-        if (empresa !== "Todas") {
-          parcelas = parcelas.filter(p => p.DadosDoTitulo.Empresa.Nome === empresa);
-        }
-        if (status !== "Todos") {
-          parcelas = parcelas.filter(p => (p.Status||"").includes(status));
-        }
-
-        renderTabela(parcelas);
-      } catch (e) {
-        console.error("Erro ao buscar parcelas", e);
+        renderTabela(filtradas);
+      } catch(e){
+        console.error(e);
       }
     }
 
-    function renderTabela(parcelas) {
-      const tbody = $("tabelaParcelas");
-      tbody.innerHTML = "";
-      parcelas.forEach(p => {
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
+    function renderTabela(parcelas){
+      const tbody=$("listaParcelas");tbody.innerHTML="";
+      parcelas.forEach(p=>{
+        const tr=document.createElement("tr");
+        tr.innerHTML=`
           <td>${p.DadosDoTitulo.ClienteFornecedor.Nome}</td>
           <td>${p.DadosDoTitulo.Empresa.Nome}</td>
-          <td>${p.Vencimento.split("-").reverse().join("/")}</td>
+          <td>${p.Vencimento}</td>
           <td>${BRL(p.ValorBruto)}</td>
-          <td>${p.MeioDePagamento || "-"}</td>
-          <td>${p.Status || "-"}</td>
+          <td>${p.MeioDePagamento||""}</td>
+          <td>${p.Status}</td>
         `;
         tbody.appendChild(tr);
       });
     }
 
-    // Filtros
-    $("filtroEmpresa").onchange = fetchParcelas;
-    $("filtroStatus").onchange = fetchParcelas;
-
-    flatpickr("#filtroPeriodo", {
-      mode: "range",
-      dateFormat: "Y-m-d",
-      locale: "pt",
-      onClose: (sel) => {
-        if (sel.length === 2) {
-          periodoInicio = sel[0].toISOString().slice(0,10);
-          periodoFim = sel[1].toISOString().slice(0,10);
-          fetchParcelas();
+    (function boot(){
+      flatpickr("#filtroPeriodo",{
+        mode:"range",dateFormat:"Y-m-d",locale:"pt",
+        onClose: sel=>{
+          if(sel.length===2){
+            periodoInicio = sel[0].toISOString().slice(0,10);
+            periodoFim = sel[1].toISOString().slice(0,10);
+            fetchParcelas();
+          }
         }
-      }
-    });
-
-    fetchParcelas();
+      });
+      $("filtroEmpresa").onchange=fetchParcelas;
+      $("filtroStatus").onchange=fetchParcelas;
+      fetchParcelas();
+      setInterval(fetchParcelas,20000); // atualiza a cada 20s
+    })();
   </script>
 </body>
 </html>
