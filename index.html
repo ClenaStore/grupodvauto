@@ -1,213 +1,122 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <title>CAP - Grupo DV</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta charset="UTF-8">
+  <title>Parcelas - Grupo DV</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/pt.js"></script>
   <style>
-    :root {
-      --bg:#0b1220;--card:#0f172a;--ink:#e5f0ff;--muted:#a8b3c7;--line:#243043;
-      --teal:#06b6d4;--blue:#4f46e5;--green:#16a34a;--red:#ef4444;--amber:#f59e0b;
-    }
-    *{box-sizing:border-box}
-    body{margin:0;font-family:Inter,system-ui;background:var(--bg);color:var(--ink);font-size:15px}
-    header{position:sticky;top:0;z-index:20;background:linear-gradient(180deg,#0f172a,#0b1220);
-      border-bottom:1px solid var(--line);padding:14px;display:flex;flex-direction:column;gap:10px}
-    header h1{font-size:18px;margin:0;font-weight:800}
-    .controls{width:100%;display:flex;flex-direction:column;gap:8px}
-    .row-filtros{display:flex;gap:8px;width:100%}
-    .row-filtros select{flex:1}
-    .row-linha{display:flex;gap:8px;width:100%}
-    .row-linha input{flex:1}
-    select,input{background:#0b1528;border:1px solid #22314b;color:var(--ink);
-      padding:10px 14px;border-radius:10px;font-size:15px;width:100%}
-    .btn{border:1px solid #2a3955;background:#0b1528;color:var(--ink);padding:10px 14px;border-radius:10px;cursor:pointer;font-weight:700;font-size:15px;width:100%;position:relative;overflow:hidden}
-    .btn.icon{display:flex;align-items:center;gap:6px;justify-content:center}
-    #overlay{position:fixed;inset:0;background:rgba(3,7,18,.55);display:none;align-items:center;justify-content:center;z-index:100}
-    .spinner{width:56px;height:56px;border:6px solid var(--teal);border-top-color:transparent;border-radius:50%;animation:spin 1s linear infinite}
-    @keyframes spin{to{transform:rotate(360deg)}}
-    .spinner-btn{width:16px;height:16px;border:2px solid #fff;border-top-color:transparent;border-radius:50%;animation:spin 1s linear infinite;position:absolute;top:50%;left:50%;margin:-8px 0 0 -8px;display:none}
-    .loading .spinner-btn{display:block}
-    .loading span,.loading b,.loading i{visibility:hidden}
-    .container{padding:16px;max-width:1250px;margin:0 auto}
-    .status-cards{display:grid;grid-template-columns:1fr;gap:10px;margin:12px 0}
-    .status-card{border-radius:12px;padding:10px;font-weight:700;display:flex;justify-content:space-between;align-items:center;color:#fff;font-size:14px}
-    .status-card.aprovado{background:linear-gradient(180deg,#19c37d,#16a34a)}
-    .status-card.negado{background:linear-gradient(180deg,#fb6969,#ef4444)}
-    .status-card.pendente{background:linear-gradient(180deg,#60a5fa,#1d4ed8)}
-    .mods-card{margin:16px 0;background:#0f172a;border:1px solid var(--line);border-radius:18px;padding:16px}
-    .mods{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-    @media(min-width:768px){.mods{grid-template-columns:1fr 1fr}}
-    @media(min-width:1024px){.mods{grid-template-columns:1fr 1fr 1fr}}
-    .mod{border-radius:16px;padding:14px;font-weight:700;display:flex;justify-content:space-between;align-items:center;color:#fff;font-size:16px}
-    .mod.total{background:#0f172a;border:1px solid var(--line)}
-    .mod.pix{background:linear-gradient(180deg,#3b82f6,#1e40af)}
-    .mod.cartao{background:linear-gradient(180deg,#22c55e,#15803d)}
-    .mod.boleto{background:linear-gradient(180deg,#9ca3af,#374151)}
-    .list-head{display:flex;align-items:center;justify-content:space-between;margin-top:10px;font-size:16px}
-    .lista{display:grid;gap:14px;margin-top:14px}
-    .titulo{background:linear-gradient(180deg,#101a2f,#0f172a);border:1px solid var(--line);
-      border-radius:18px;padding:12px;display:grid;gap:10px;position:relative}
-    .row{display:flex;gap:10px;flex-wrap:wrap;font-size:14px;color:var(--muted)}
-    .row b{color:var(--ink);font-size:15px}
-    .pill{padding:6px 12px;border-radius:999px;border:1px solid #2a3955;background:#0b1528;font-size:13px;font-weight:800;position:absolute;top:8px;right:8px}
-    .pill.ok{border-color:#155e32;color:#b6f3c5;background:#0e2a1b}
-    .pill.warn{border-color:#7a1e1e;color:#ffb4b4;background:#2a0e0e}
+    body{margin:0;font-family:Inter,system-ui;background:#0b1220;color:#e5f0ff}
+    header{background:#0f172a;padding:14px;font-weight:800;font-size:18px}
+    .controls{padding:14px;display:flex;gap:10px;flex-wrap:wrap}
+    select,input{background:#0b1528;border:1px solid #22314b;color:#e5f0ff;padding:10px;border-radius:8px}
+    .container{padding:14px}
+    table{width:100%;border-collapse:collapse;margin-top:14px}
+    th,td{padding:10px;border-bottom:1px solid #22314b;text-align:left}
+    th{background:#101a2f}
+    tr:hover{background:#16213b}
+    .pill{padding:4px 8px;border-radius:6px;font-size:12px;font-weight:700}
+    .pill.pendente{background:#1e3a8a;color:#93c5fd}
+    .pill.aprovado{background:#065f46;color:#6ee7b7}
+    .pill.negado{background:#7f1d1d;color:#fca5a5}
   </style>
 </head>
 <body>
-<header>
-  <h1>CAP - Grupo DV</h1>
-  <div class="controls">
-    <div class="row-filtros">
-      <select id="filtroStatus">
-        <option value="Todos" selected>Todos</option>
-        <option value="Aprovado">Aprovados</option>
-        <option value="Negado">Negados</option>
-        <option value="Pendente">Pendentes</option>
-      </select>
-      <select id="filtroMeio">
-        <option value="Todos" selected>Todos</option>
-        <option value="Pix">Pix</option>
-        <option value="Cartão">Cartão</option>
-        <option value="Boleto">Boleto</option>
-      </select>
-    </div>
-    <div class="row-linha">
-      <input type="text" id="filtroPeriodo" placeholder="Selecione período" />
-      <div style="position:relative;flex:1">
-        <button class="btn icon" id="btnEmpresas"><span id="empresaSelecionada">VILLA GOURMET</span> ▼</button>
-        <div id="menuEmpresas" class="menu"></div>
-      </div>
-    </div>
-  </div>
-</header>
+<header>Parcelas - Grupo DV</header>
 
-<div id="overlay"><div class="spinner"></div></div>
+<div class="controls">
+  <input type="text" id="filtroPeriodo" placeholder="Selecione período">
+  <select id="filtroEmpresa"></select>
+  <select id="filtroStatus">
+    <option value="Todos">Todos</option>
+    <option value="Pendente">Pendentes</option>
+    <option value="Aprovado">Pagos</option>
+    <option value="Negado">Cancelados</option>
+  </select>
+</div>
 
 <div class="container">
-  <div id="statusCards" class="status-cards"></div>
-  <div class="mods-card">
-    <div style="font-weight:800;margin-bottom:8px;font-size:16px">Modalidades</div>
-    <div id="mods" class="mods"></div>
-  </div>
-  <div class="list-head">
-    <label><input id="master" type="checkbox" /> <b>Selecionar todos</b></label>
-    <div id="contagem" style="color:var(--muted);font-size:14px">0 itens</div>
-  </div>
-  <div id="lista" class="lista"></div>
+  <table>
+    <thead>
+      <tr>
+        <th>Fornecedor</th>
+        <th>Empresa</th>
+        <th>Vencimento</th>
+        <th>Valor</th>
+        <th>Meio</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody id="tabelaParcelas"></tbody>
+  </table>
 </div>
 
 <script>
-const API_URL = "/api/f360"; // 🔹 endpoint proxy (Vercel)
-const EMP_DEFAULT = ["MERCATTO DELÍCIA","VILLA GOURMET","PADARIA DELÍCIA","M.KIDS","DELÍCIA GOURMET"];
-let TITULOS = {};
+const API_URL="/api/f360";
+const EMPRESAS=["MERCATTO DELÍCIA","VILLA GOURMET","PADARIA DELÍCIA","M.KIDS","DELÍCIA GOURMET"];
+let periodoInicio=null,periodoFim=null,parcelasCache=[];
 
-const $=id=>document.getElementById(id);
 const BRL=n=>(isNaN(n)?0:n).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
-const iso = d => d?new Date(d).toISOString().slice(0,10):"";
+const iso=d=>d?new Date(d).toISOString().slice(0,10):"";
 
-// 🔹 Mapeia JSON do F360 → formato painel
 function mapearParcelas(parcelas){
-  return parcelas.map((p,i)=>({
-    linha: i,
-    fornecedor: p.DadosDoTitulo?.ClienteFornecedor?.Nome || "—",
-    vencimento: p.Vencimento,
-    valor: p.ValorBruto,
-    meio_pagamento: p.MeioDePagamento || "Outros",
-    status: p.Status.includes("Aberto") ? "Pendente" :
-            p.Status.includes("Pago") ? "Aprovado" : "Negado",
-    observacao: p.DadosDoTitulo?.Observacao || "",
-    historico: p.DataDeAtualizacao || ""
+  return parcelas.map(p=>({
+    fornecedor:p.DadosDoTitulo?.ClienteFornecedor?.Nome||"—",
+    empresa:p.DadosDoTitulo?.Empresa?.Nome||"—",
+    vencimento:p.Vencimento,
+    valor:p.ValorBruto,
+    meio:p.MeioDePagamento||"Outros",
+    status:p.Status.includes("Aberto")?"Pendente":p.Status.includes("Pago")?"Aprovado":"Negado"
   }));
 }
 
-// 🔹 Render cards de status e modalidades
-function renderMods(){
-  const mods=$("mods");mods.innerHTML="";
-  const statusCards=$("statusCards");statusCards.innerHTML="";
-  let soma={Pix:0,Cartão:0,Boleto:0,Total:0};
-  let somaStatus={Aprovado:0,Negado:0,Pendente:0};
-  for(const emp of Object.keys(TITULOS)){
-    (TITULOS[emp]||[]).forEach(t=>{
-      const val=Number(t.valor)||0;
-      soma.Total+=val;
-      soma[t.meio_pagamento] = (soma[t.meio_pagamento]||0)+val;
-      somaStatus[t.status]=(somaStatus[t.status]||0)+val;
+function renderTabela(){
+  const corpo=document.getElementById("tabelaParcelas");
+  corpo.innerHTML="";
+  const filtroStatus=document.getElementById("filtroStatus").value;
+  const filtroEmpresa=document.getElementById("filtroEmpresa").value;
+
+  parcelasCache
+    .filter(p=>(filtroStatus==="Todos"||p.status===filtroStatus))
+    .filter(p=>(filtroEmpresa==="Todos"||p.empresa===filtroEmpresa))
+    .forEach(p=>{
+      const tr=document.createElement("tr");
+      tr.innerHTML=`
+        <td>${p.fornecedor}</td>
+        <td>${p.empresa}</td>
+        <td>${p.vencimento}</td>
+        <td>${BRL(p.valor)}</td>
+        <td>${p.meio}</td>
+        <td><span class="pill ${p.status.toLowerCase()}">${p.status}</span></td>`;
+      corpo.appendChild(tr);
     });
-  }
-  statusCards.innerHTML+=`<div class="status-card aprovado"><span>Aprovado</span><b>${BRL(somaStatus.Aprovado)}</b></div>`;
-  statusCards.innerHTML+=`<div class="status-card negado"><span>Negado</span><b>${BRL(somaStatus.Negado)}</b></div>`;
-  statusCards.innerHTML+=`<div class="status-card pendente"><span>Pendente</span><b>${BRL(somaStatus.Pendente)}</b></div>`;
-  mods.innerHTML+=`<div class="mod pix"><span>Pix</span><b>${BRL(soma.Pix)}</b></div>`;
-  mods.innerHTML+=`<div class="mod cartao"><span>Cartão</span><b>${BRL(soma.Cartão)}</b></div>`;
-  mods.innerHTML+=`<div class="mod boleto"><span>Boleto</span><b>${BRL(soma.Boleto)}</b></div>`;
-  mods.innerHTML+=`<div class="mod total"><span>Total</span><b>${BRL(soma.Total)}</b></div>`;
 }
 
-// 🔹 Render lista
-function renderLista(){
-  const lista=$("lista");lista.innerHTML="";
-  let totalItens=0;
-  for(const emp of Object.keys(TITULOS)){
-    TITULOS[emp].forEach(t=>{
-      totalItens++;
-      const card=document.createElement("div");
-      card.className="titulo";
-      card.innerHTML=`
-        <div class="row"><b>${t.fornecedor}</b> • ${emp}</div>
-        <div class="row">Venc: <b>${t.vencimento}</b> • Meio: <b>${t.meio_pagamento}</b></div>
-        <div class="row">Valor: <b>${BRL(t.valor)}</b></div>
-        ${t.observacao?`<div class="row">Obs: ${t.observacao}</div>`:""}
-        ${t.historico?`<div class="row">Histórico: ${t.historico}</div>`:""}
-        <span class="pill">${t.status}</span>`;
-      lista.appendChild(card);
-    });
-  }
-  $("contagem").textContent=`${totalItens} itens`;
-  renderMods();
-}
-
-// 🔹 Busca dados no proxy da Vercel
-async function fetchEmpresa(emp,inicio,fim){
-  $("overlay").style.display="flex";
+async function fetchParcelas(){
+  const empresa=document.getElementById("filtroEmpresa").value;
+  const inicio=periodoInicio||iso(new Date());
+  const fim=periodoFim||iso(new Date());
   try{
-    const r = await fetch(`${API_URL}?empresa=${encodeURIComponent(emp)}&inicio=${inicio}&fim=${fim}`);
-    const d = await r.json();
-    TITULOS[emp]=mapearParcelas(d.Result?.Parcelas||[]);
-    renderLista();
+    const r=await fetch(`${API_URL}?empresa=${encodeURIComponent(empresa)}&inicio=${inicio}&fim=${fim}`);
+    const d=await r.json();
+    parcelasCache=mapearParcelas(d.Result?.Parcelas||[]);
+    renderTabela();
   }catch(e){console.error(e)}
-  $("overlay").style.display="none";
 }
 
-// 🔹 Filtros
-function refresh(){
-  const empresa=document.querySelector("#menuEmpresas input:checked")?.value || EMP_DEFAULT[0];
-  const periodo=$("filtroPeriodo").value.split(" até ");
-  const inicio=iso(periodo[0]);
-  const fim=iso(periodo[1]||periodo[0]);
-  fetchEmpresa(empresa,inicio,fim);
-  $("empresaSelecionada").textContent=empresa;
-}
-
+// inicialização
 (function boot(){
-  const hoje=new Date();
-  flatpickr("#filtroPeriodo",{mode:"range",dateFormat:"d/m/Y",locale:"pt",defaultDate:[hoje,hoje],onClose:()=>refresh()});
-  const M=$("menuEmpresas");
-  EMP_DEFAULT.forEach((emp,i)=>{
-    const lbl=document.createElement("label");
-    lbl.innerHTML=`<input type="radio" name="empresaSel" value="${emp}" ${i===0?"checked":""}> ${emp}`;
-    lbl.querySelector("input").onchange=()=>{refresh();M.style.display="none"};
-    M.appendChild(lbl);
+  flatpickr("#filtroPeriodo",{mode:"range",dateFormat:"d/m/Y",locale:"pt",
+    defaultDate:[new Date(),new Date()],
+    onClose:sel=>{if(sel.length===2){periodoInicio=iso(sel[0]);periodoFim=iso(sel[1]);fetchParcelas();}}
   });
-  $("btnEmpresas").onclick=(e)=>{e.stopPropagation();M.style.display=M.style.display==="block"?"none":"block"};
-  document.addEventListener("click",(e)=>{if(!M.contains(e.target)&&e.target.id!=="btnEmpresas"){M.style.display="none"}});
-  $("filtroStatus").onchange=()=>refresh();
-  $("filtroMeio").onchange=()=>refresh();
-  refresh();
+  const sel=document.getElementById("filtroEmpresa");
+  sel.innerHTML=`<option value="Todos">Todas</option>`+EMPRESAS.map(e=>`<option value="${e}">${e}</option>`).join("");
+  sel.onchange=fetchParcelas;
+  document.getElementById("filtroStatus").onchange=renderTabela;
+  fetchParcelas();
 })();
 </script>
 </body>
