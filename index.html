@@ -1,123 +1,155 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Parcelas - Grupo DV</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/pt.js"></script>
   <style>
-    body{margin:0;font-family:Inter,system-ui;background:#0b1220;color:#e5f0ff}
-    header{background:#0f172a;padding:14px;font-weight:800;font-size:18px}
-    .controls{padding:14px;display:flex;gap:10px;flex-wrap:wrap}
-    select,input{background:#0b1528;border:1px solid #22314b;color:#e5f0ff;padding:10px;border-radius:8px}
-    .container{padding:14px}
-    table{width:100%;border-collapse:collapse;margin-top:14px}
-    th,td{padding:10px;border-bottom:1px solid #22314b;text-align:left}
-    th{background:#101a2f}
-    tr:hover{background:#16213b}
-    .pill{padding:4px 8px;border-radius:6px;font-size:12px;font-weight:700}
-    .pill.pendente{background:#1e3a8a;color:#93c5fd}
-    .pill.aprovado{background:#065f46;color:#6ee7b7}
-    .pill.negado{background:#7f1d1d;color:#fca5a5}
+    body {
+      margin: 0;
+      font-family: Inter, system-ui, sans-serif;
+      background: #0b1220;
+      color: #e5f0ff;
+    }
+    header {
+      padding: 12px;
+      background: #0f172a;
+      border-bottom: 1px solid #243043;
+    }
+    header h1 { margin: 0; font-size: 18px; font-weight: 800; }
+    .filtros {
+      display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px;
+    }
+    select, input {
+      background: #0b1528;
+      border: 1px solid #22314b;
+      color: #e5f0ff;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+    table {
+      width: 100%; border-collapse: collapse; margin-top: 16px;
+    }
+    th, td {
+      padding: 10px;
+      border-bottom: 1px solid #243043;
+      text-align: left;
+      font-size: 14px;
+    }
+    th { background: #101a2f; }
+    tr:hover { background: #162033; }
   </style>
 </head>
 <body>
-<header>Parcelas - Grupo DV</header>
+  <header>
+    <h1>Parcelas - Grupo DV</h1>
+    <div class="filtros">
+      <input type="text" id="filtroPeriodo" placeholder="Selecione período">
+      <select id="filtroEmpresa">
+        <option value="Todas">Todas</option>
+        <option value="MERCATTO DELÍCIA">MERCATTO DELÍCIA</option>
+        <option value="VILLA GOURMET">VILLA GOURMET</option>
+        <option value="PADARIA DELÍCIA">PADARIA DELÍCIA</option>
+        <option value="M.KIDS">M.KIDS</option>
+      </select>
+      <select id="filtroStatus">
+        <option value="Todos">Todos</option>
+        <option value="Aberto">Aberto</option>
+        <option value="Pago">Pago</option>
+        <option value="Cancelado">Cancelado</option>
+      </select>
+    </div>
+  </header>
 
-<div class="controls">
-  <input type="text" id="filtroPeriodo" placeholder="Selecione período">
-  <select id="filtroEmpresa"></select>
-  <select id="filtroStatus">
-    <option value="Todos">Todos</option>
-    <option value="Pendente">Pendentes</option>
-    <option value="Aprovado">Pagos</option>
-    <option value="Negado">Cancelados</option>
-  </select>
-</div>
+  <main style="padding:16px">
+    <table>
+      <thead>
+        <tr>
+          <th>Fornecedor</th>
+          <th>Empresa</th>
+          <th>Vencimento</th>
+          <th>Valor</th>
+          <th>Meio</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="tabelaParcelas"></tbody>
+    </table>
+  </main>
 
-<div class="container">
-  <table>
-    <thead>
-      <tr>
-        <th>Fornecedor</th>
-        <th>Empresa</th>
-        <th>Vencimento</th>
-        <th>Valor</th>
-        <th>Meio</th>
-        <th>Status</th>
-      </tr>
-    </thead>
-    <tbody id="tabelaParcelas"></tbody>
-  </table>
-</div>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const BRL = (n) => (isNaN(n) ? 0 : n).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+    let periodoInicio = null, periodoFim = null;
 
-<script>
-const API_URL="/api/f360";
-const EMPRESAS=["MERCATTO DELÍCIA","VILLA GOURMET","PADARIA DELÍCIA","M.KIDS","DELÍCIA GOURMET"];
-let periodoInicio=null,periodoFim=null,parcelasCache=[];
+    // 🔹 Busca parcelas no backend (proxy da Vercel)
+    async function fetchParcelas() {
+      const empresa = $("filtroEmpresa").value;
+      const status = $("filtroStatus").value;
 
-const BRL=n=>(isNaN(n)?0:n).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
-const iso=d=>d?new Date(d).toISOString().slice(0,10):"";
+      const inicio = periodoInicio || new Date().toISOString().slice(0,10);
+      const fim = periodoFim   || new Date().toISOString().slice(0,10);
 
-function mapearParcelas(parcelas){
-  return parcelas.map(p=>({
-    fornecedor:p.DadosDoTitulo?.ClienteFornecedor?.Nome||"—",
-    empresa:p.DadosDoTitulo?.Empresa?.Nome||"—",
-    vencimento:p.Vencimento,
-    valor:p.ValorBruto,
-    meio:p.MeioDePagamento||"Outros",
-    status:p.Status.includes("Aberto")?"Pendente":p.Status.includes("Pago")?"Aprovado":"Negado"
-  }));
-}
+      try {
+        const r = await fetch(`/api/f360?inicio=${inicio}&fim=${fim}`);
+        const d = await r.json();
+        console.log("Resposta da API:", d);
 
-function renderTabela(){
-  const corpo=document.getElementById("tabelaParcelas");
-  corpo.innerHTML="";
-  const filtroStatus=document.getElementById("filtroStatus").value;
-  const filtroEmpresa=document.getElementById("filtroEmpresa").value;
+        let parcelas = d.Result?.Parcelas || [];
 
-  parcelasCache
-    .filter(p=>(filtroStatus==="Todos"||p.status===filtroStatus))
-    .filter(p=>(filtroEmpresa==="Todos"||p.empresa===filtroEmpresa))
-    .forEach(p=>{
-      const tr=document.createElement("tr");
-      tr.innerHTML=`
-        <td>${p.fornecedor}</td>
-        <td>${p.empresa}</td>
-        <td>${p.vencimento}</td>
-        <td>${BRL(p.valor)}</td>
-        <td>${p.meio}</td>
-        <td><span class="pill ${p.status.toLowerCase()}">${p.status}</span></td>`;
-      corpo.appendChild(tr);
+        // Filtros front
+        if (empresa !== "Todas") {
+          parcelas = parcelas.filter(p => p.DadosDoTitulo.Empresa.Nome === empresa);
+        }
+        if (status !== "Todos") {
+          parcelas = parcelas.filter(p => (p.Status||"").includes(status));
+        }
+
+        renderTabela(parcelas);
+      } catch (e) {
+        console.error("Erro ao buscar parcelas", e);
+      }
+    }
+
+    function renderTabela(parcelas) {
+      const tbody = $("tabelaParcelas");
+      tbody.innerHTML = "";
+      parcelas.forEach(p => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${p.DadosDoTitulo.ClienteFornecedor.Nome}</td>
+          <td>${p.DadosDoTitulo.Empresa.Nome}</td>
+          <td>${p.Vencimento.split("-").reverse().join("/")}</td>
+          <td>${BRL(p.ValorBruto)}</td>
+          <td>${p.MeioDePagamento || "-"}</td>
+          <td>${p.Status || "-"}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // Filtros
+    $("filtroEmpresa").onchange = fetchParcelas;
+    $("filtroStatus").onchange = fetchParcelas;
+
+    flatpickr("#filtroPeriodo", {
+      mode: "range",
+      dateFormat: "Y-m-d",
+      locale: "pt",
+      onClose: (sel) => {
+        if (sel.length === 2) {
+          periodoInicio = sel[0].toISOString().slice(0,10);
+          periodoFim = sel[1].toISOString().slice(0,10);
+          fetchParcelas();
+        }
+      }
     });
-}
 
-async function fetchParcelas(){
-  const empresa=document.getElementById("filtroEmpresa").value;
-  const inicio=periodoInicio||iso(new Date());
-  const fim=periodoFim||iso(new Date());
-  try{
-    const r=await fetch(`${API_URL}?empresa=${encodeURIComponent(empresa)}&inicio=${inicio}&fim=${fim}`);
-    const d=await r.json();
-    parcelasCache=mapearParcelas(d.Result?.Parcelas||[]);
-    renderTabela();
-  }catch(e){console.error(e)}
-}
-
-// inicialização
-(function boot(){
-  flatpickr("#filtroPeriodo",{mode:"range",dateFormat:"d/m/Y",locale:"pt",
-    defaultDate:[new Date(),new Date()],
-    onClose:sel=>{if(sel.length===2){periodoInicio=iso(sel[0]);periodoFim=iso(sel[1]);fetchParcelas();}}
-  });
-  const sel=document.getElementById("filtroEmpresa");
-  sel.innerHTML=`<option value="Todos">Todas</option>`+EMPRESAS.map(e=>`<option value="${e}">${e}</option>`).join("");
-  sel.onchange=fetchParcelas;
-  document.getElementById("filtroStatus").onchange=renderTabela;
-  fetchParcelas();
-})();
-</script>
+    fetchParcelas();
+  </script>
 </body>
 </html>
